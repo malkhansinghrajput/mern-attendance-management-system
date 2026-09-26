@@ -42,8 +42,8 @@ const getMyAttendance = async (req, res, next) => {
 
 const getTeamAttendance = async (req, res, next) => {
   try {
-    const { page, limit, userId, date } = req.query;
-    const result = await attendanceService.getTeamAttendance(req.user._id, { page, limit, userId, date });
+    const { page, limit, userId, date, validationStatus } = req.query;
+    const result = await attendanceService.getTeamAttendance(req.user._id, { page, limit, userId, date, validationStatus });
     return sendSuccess(res, 200, 'Team attendance', result);
   } catch (error) {
     next(error);
@@ -52,8 +52,8 @@ const getTeamAttendance = async (req, res, next) => {
 
 const getAllAttendance = async (req, res, next) => {
   try {
-    const { page, limit, userId, date, startDate, endDate } = req.query;
-    const result = await attendanceService.getAllAttendance({ page, limit, userId, date, startDate, endDate });
+    const { page, limit, userId, date, startDate, endDate, validationStatus } = req.query;
+    const result = await attendanceService.getAllAttendance({ page, limit, userId, date, startDate, endDate, validationStatus });
     return sendSuccess(res, 200, 'All attendance', result);
   } catch (error) {
     next(error);

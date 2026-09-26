@@ -43,8 +43,8 @@ const ManagerDashboard = () => {
       <div className="stats-grid">
         <StatCard icon="👥" value={teamMembers.length} label="Team Size" variant="primary" />
         <StatCard icon="✅" value={presentCount} label="Present Today" variant="success" />
-        <StatCard icon="⏳" value={pendingValidation} label="Pending Validation" variant="warning" />
-        <StatCard icon="⏰" value={pendingOT.length} label="Pending OT" variant="danger" />
+        <StatCard icon="⏳" value={pendingValidation} label="Pending Validation (Today)" variant="warning" />
+        <StatCard icon="⏰" value={pendingOtData?.data?.total ?? pendingOT.length} label="Pending OT Requests" variant="danger" />
       </div>
 
       {/* Today's Team Attendance */}

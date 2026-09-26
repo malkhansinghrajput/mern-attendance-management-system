@@ -128,7 +128,7 @@ const getMyAttendance = async (userId, { page = 1, limit = 10, startDate, endDat
 /**
  * Get team attendance for a manager (paginated).
  */
-const getTeamAttendance = async (managerId, { page = 1, limit = 20, userId, date }) => {
+const getTeamAttendance = async (managerId, { page = 1, limit = 20, userId, date, validationStatus }) => {
   // Get all team member IDs
   const teamMembers = await User.find({ managerId }).select('_id');
   const teamIds = teamMembers.map((m) => m._id);
@@ -136,6 +136,7 @@ const getTeamAttendance = async (managerId, { page = 1, limit = 20, userId, date
   const query = { userId: { $in: teamIds } };
   if (userId) query.userId = userId;
   if (date) query.date = date;
+  if (validationStatus) query.validationStatus = validationStatus;
 
   const skip = (page - 1) * limit;
   const [attendances, total] = await Promise.all([
@@ -155,7 +156,7 @@ const getTeamAttendance = async (managerId, { page = 1, limit = 20, userId, date
 /**
  * Get all attendance for admin (paginated).
  */
-const getAllAttendance = async ({ page = 1, limit = 20, userId, date, startDate, endDate }) => {
+const getAllAttendance = async ({ page = 1, limit = 20, userId, date, startDate, endDate, validationStatus }) => {
   const query = {};
   if (userId) query.userId = userId;
   if (date) query.date = date;
@@ -164,6 +165,7 @@ const getAllAttendance = async ({ page = 1, limit = 20, userId, date, startDate,
     if (startDate) query.date.$gte = startDate;
     if (endDate) query.date.$lte = endDate;
   }
+  if (validationStatus) query.validationStatus = validationStatus;
 
   const skip = (page - 1) * limit;
   const [attendances, total] = await Promise.all([

@@ -7,7 +7,7 @@ const logger = require('../config/logger');
 /**
  * Creates a new user account.
  */
-const signup = async ({ name, email, password, role, managerId }) => {
+const signup = async ({ name, email, password, managerId }) => {
   // Check for existing user
   const existing = await User.findOne({ email });
   if (existing) {
@@ -20,11 +20,13 @@ const signup = async ({ name, email, password, role, managerId }) => {
   // Hash password
   const passwordHash = await bcrypt.hash(password, 12);
 
+  // Role is always 'employee' on self-signup.
+  // Admin/Manager roles can only be assigned by an Admin user.
   const user = await User.create({
     name,
     email,
     passwordHash,
-    role: role || 'employee',
+    role: 'employee',
     managerId: managerId || null,
   });
 

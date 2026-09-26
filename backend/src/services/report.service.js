@@ -76,8 +76,10 @@ const getAdminStats = async () => {
   const validToday = todayAttendance.filter((a) => a.validationStatus === 'valid').length;
   const invalidToday = todayAttendance.filter((a) => a.validationStatus === 'invalid').length;
   const pendingValidation = todayAttendance.filter((a) => a.validationStatus === 'pending').length;
+  const completedToday = todayAttendance.filter((a) => a.attendanceStatus === 'completed').length;
+  const incompleteToday = todayAttendance.filter((a) => a.attendanceStatus === 'incomplete').length;
 
-  return { totalUsers, presentToday, validToday, invalidToday, pendingValidation };
+  return { totalUsers, presentToday, validToday, invalidToday, pendingValidation, completedToday, incompleteToday };
 };
 
 module.exports = { getDailyReport, getAdminStats };

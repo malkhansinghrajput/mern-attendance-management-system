@@ -6,17 +6,12 @@ import { parseApiError } from '../../utils/formatters';
 import Button from '../../components/common/Button';
 import '../../styles/index.css';
 
-const ROLES = [
-  { value: 'employee', label: '👤 Employee' },
-  { value: 'manager', label: '🧑‍💼 Manager' },
-  { value: 'admin', label: '👑 Admin' },
-];
 
 const SignupPage = () => {
   const navigate = useNavigate();
   const [signup, { isLoading }] = useSignupMutation();
   const [form, setForm] = useState({
-    name: '', email: '', password: '', confirmPassword: '', role: 'employee', managerId: '',
+    name: '', email: '', password: '', confirmPassword: '', managerId: '',
   });
   const [errors, setErrors] = useState({});
 
@@ -42,21 +37,15 @@ const SignupPage = () => {
       name: form.name.trim(),
       email: form.email.trim().toLowerCase(),
       password: form.password,
-      role: form.role,
+      // role is always 'employee' — handled server-side
     };
     if (form.managerId.trim()) payload.managerId = form.managerId.trim();
 
     try {
       const res = await signup(payload).unwrap();
       toast.success('Account created! Welcome 🎉');
-      const userRole = res?.data?.user?.role || form.role;
-      const targetDashboard =
-        userRole === 'admin'
-          ? '/admin/dashboard'
-          : userRole === 'manager'
-          ? '/manager/dashboard'
-          : '/employee/dashboard';
-      navigate(targetDashboard, { replace: true });
+      // New signups are always employees
+      navigate('/employee/dashboard', { replace: true });
     } catch (err) {
       toast.error(parseApiError(err));
     }
@@ -128,21 +117,13 @@ const SignupPage = () => {
             </div>
           </div>
 
-          <div className="form-group">
-            <label className="form-label" htmlFor="role">Role</label>
-            <select
-              id="role" name="role"
-              className="form-select"
-              value={form.role} onChange={handleChange}
-            >
-              {ROLES.map((r) => (
-                <option key={r.value} value={r.value}>{r.label}</option>
-              ))}
-            </select>
+          {/* Info: signup always creates employee account */}
+          <div className="alert alert-info" style={{ fontSize: '0.8rem', marginBottom: '0.75rem' }}>
+            <span>💡</span>
+            <span>All new accounts are created as <strong>Employee</strong>. Your admin can update your role later.</span>
           </div>
 
-          {form.role === 'employee' && (
-            <div className="form-group">
+          <div className="form-group">
               <label className="form-label" htmlFor="managerId">
                 Manager ID <span style={{ color: 'var(--text-muted)' }}>(optional)</span>
               </label>
@@ -156,7 +137,6 @@ const SignupPage = () => {
                 Ask your admin for the Manager ID to link to your team.
               </p>
             </div>
-          )}
 
           <Button type="submit" fullWidth size="lg" loading={isLoading} id="btn-signup">
             Create Account →

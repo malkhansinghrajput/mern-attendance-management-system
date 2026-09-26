@@ -40,7 +40,9 @@ const AdminDashboard = () => {
         <div className="stats-grid">
           <StatCard icon="👤" value={stats?.totalUsers ?? '—'} label="Active Users" variant="primary" />
           <StatCard icon="✅" value={stats?.presentToday ?? '—'} label="Present Today" variant="success" />
-          <StatCard icon="🟢" value={stats?.validToday ?? '—'} label="Validated Today" variant="info" />
+          <StatCard icon="🟢" value={stats?.completedToday ?? '—'} label="Completed (8h+)" variant="info" />
+          <StatCard icon="🟡" value={stats?.incompleteToday ?? '—'} label="Incomplete (<8h)" variant="warning" />
+          <StatCard icon="🔍" value={stats?.validToday ?? '—'} label="Validated Today" variant="info" />
           <StatCard icon="❌" value={stats?.invalidToday ?? '—'} label="Invalid Today" variant="danger" />
           <StatCard icon="⏳" value={stats?.pendingValidation ?? '—'} label="Pending Validation" variant="warning" />
         </div>

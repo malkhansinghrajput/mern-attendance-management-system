@@ -1,5 +1,4 @@
 const { body } = require('express-validator');
-const { ROLES } = require('../constants/roles');
 
 const signupValidators = [
   body('name')
@@ -17,10 +16,7 @@ const signupValidators = [
     .notEmpty().withMessage('Password is required')
     .isLength({ min: 6 }).withMessage('Password must be at least 6 characters'),
 
-  body('role')
-    .optional()
-    .isIn(Object.values(ROLES)).withMessage(`Role must be one of: ${Object.values(ROLES).join(', ')}`),
-
+  // managerId is optional — lets employee link to their manager on signup
   body('managerId')
     .optional({ nullable: true })
     .isMongoId().withMessage('managerId must be a valid ID'),
