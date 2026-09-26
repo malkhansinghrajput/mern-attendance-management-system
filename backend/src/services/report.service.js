@@ -1,7 +1,8 @@
 const Attendance = require('../models/Attendance');
 const User = require('../models/User');
-const { getTodayDate } = require('../utils/dateUtils');
-const { formatWorkingHours } = require('../utils/dateUtils');
+const { getTodayDate, formatWorkingHours } = require('../utils/dateUtils');
+const { calculateWorkingMinutes } = require('./workingHours.service');
+const { ATTENDANCE_STATUS } = require('../constants/attendance');
 
 /**
  * Generate daily attendance report scoped by role.
@@ -38,25 +39,32 @@ const getDailyReport = async (requesterId, requesterRole, { date, userId, page =
   ]);
 
   // Shape records for the report response
-  const shaped = records.map((a) => ({
-    _id: a._id,
-    employee: a.userId,
-    date: a.date,
-    punchIn: a.punchIn,
-    punchOut: a.punchOut,
-    punchInSelfie: a.punchInSelfie,
-    punchOutSelfie: a.punchOutSelfie,
-    punchInLocation: a.punchInLocation,
-    punchOutLocation: a.punchOutLocation,
-    workingMinutes: a.workingMinutes,
-    workingHoursFormatted: formatWorkingHours(a.workingMinutes),
-    attendanceStatus: a.attendanceStatus,
-    validationStatus: a.validationStatus,
-    validatedBy: a.validatedBy,
-    validatedAt: a.validatedAt,
-    validationRemarks: a.validationRemarks,
-    overtimeRequest: a.overtimeRequest,
-  }));
+  const shaped = records.map((a) => {
+    const isRecordActive = a.attendanceStatus === ATTENDANCE_STATUS.ACTIVE && a.punchIn && !a.punchOut;
+    const workingMins = isRecordActive
+      ? calculateWorkingMinutes(a.punchIn, new Date())
+      : (a.workingMinutes || 0);
+
+    return {
+      _id: a._id,
+      employee: a.userId,
+      date: a.date,
+      punchIn: a.punchIn,
+      punchOut: a.punchOut,
+      punchInSelfie: a.punchInSelfie,
+      punchOutSelfie: a.punchOutSelfie,
+      punchInLocation: a.punchInLocation,
+      punchOutLocation: a.punchOutLocation,
+      workingMinutes: workingMins,
+      workingHoursFormatted: formatWorkingHours(workingMins),
+      attendanceStatus: a.attendanceStatus,
+      validationStatus: a.validationStatus,
+      validatedBy: a.validatedBy,
+      validatedAt: a.validatedAt,
+      validationRemarks: a.validationRemarks,
+      overtimeRequest: a.overtimeRequest,
+    };
+  });
 
   return { records: shaped, total, page: Number(page), limit: Number(limit), date: reportDate };
 };

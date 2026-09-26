@@ -92,6 +92,18 @@ const punchOut = async (userId, { selfieUrl, location }) => {
 };
 
 /**
+ * Attaches calculated elapsed working minutes to active attendance records.
+ */
+const formatAttendanceRecord = (rec) => {
+  if (!rec) return rec;
+  const obj = typeof rec.toObject === 'function' ? rec.toObject() : { ...rec };
+  if (obj.attendanceStatus === ATTENDANCE_STATUS.ACTIVE && obj.punchIn && !obj.punchOut) {
+    obj.workingMinutes = calculateWorkingMinutes(obj.punchIn, new Date());
+  }
+  return obj;
+};
+
+/**
  * Get today's attendance for an employee.
  */
 const getTodayAttendance = async (userId) => {
@@ -100,7 +112,7 @@ const getTodayAttendance = async (userId) => {
     .populate('userId', 'name email role')
     .populate('validatedBy', 'name role')
     .populate('overtimeRequest');
-  return attendance;
+  return formatAttendanceRecord(attendance);
 };
 
 /**
@@ -122,7 +134,7 @@ const getMyAttendance = async (userId, { page = 1, limit = 10, startDate, endDat
     Attendance.countDocuments(query),
   ]);
 
-  return { attendances, total, page: Number(page), limit: Number(limit) };
+  return { attendances: attendances.map(formatAttendanceRecord), total, page: Number(page), limit: Number(limit) };
 };
 
 /**
@@ -150,7 +162,7 @@ const getTeamAttendance = async (managerId, { page = 1, limit = 20, userId, date
     Attendance.countDocuments(query),
   ]);
 
-  return { attendances, total, page: Number(page), limit: Number(limit) };
+  return { attendances: attendances.map(formatAttendanceRecord), total, page: Number(page), limit: Number(limit) };
 };
 
 /**
@@ -179,7 +191,7 @@ const getAllAttendance = async ({ page = 1, limit = 20, userId, date, startDate,
     Attendance.countDocuments(query),
   ]);
 
-  return { attendances, total, page: Number(page), limit: Number(limit) };
+  return { attendances: attendances.map(formatAttendanceRecord), total, page: Number(page), limit: Number(limit) };
 };
 
 /**

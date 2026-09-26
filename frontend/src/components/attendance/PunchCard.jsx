@@ -141,10 +141,10 @@ const PunchCard = ({ attendance }) => {
         )}
 
         {/* Working Hours */}
-        {attendance?.workingMinutes > 0 && (
+        {attendance && (isActive || (attendance.workingMinutes || 0) > 0) && (
           <div style={{ textAlign: 'center', marginBottom: '1.25rem' }}>
-            <span className="working-hours-badge">
-              ⏱️ {formatWorkingHours(attendance.workingMinutes)}
+            <span className="working-hours-badge" style={{ fontSize: '0.9rem', padding: '0.4rem 0.9rem' }}>
+              ⏱️ Today's Working Hours: {formatWorkingHours(attendance.workingMinutes || 0)} {isActive ? '(Active)' : ''}
             </span>
           </div>
         )}

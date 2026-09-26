@@ -21,8 +21,12 @@ const StatCard = ({ icon, value, label, variant = 'primary' }) => (
 
 const EmployeeDashboard = () => {
   const { user } = useAuth();
-  const { data: todayData, isLoading: todayLoading } = useGetTodayAttendanceQuery();
-  const { data: historyData } = useGetMyAttendanceQuery({ page: 1, limit: 7 });
+  const { data: todayData, isLoading: todayLoading } = useGetTodayAttendanceQuery(undefined, {
+    pollingInterval: 30000,
+  });
+  const { data: historyData } = useGetMyAttendanceQuery({ page: 1, limit: 7 }, {
+    pollingInterval: 30000,
+  });
   const { data: otData } = useGetMyOvertimeQuery({ page: 1, limit: 3 });
 
   const attendance = todayData?.data?.attendance;
@@ -57,7 +61,7 @@ const EmployeeDashboard = () => {
         />
         <StatCard
           icon="⏱️"
-          value={attendance?.workingMinutes ? formatWorkingHours(attendance.workingMinutes) : '—'}
+          value={attendance ? formatWorkingHours(attendance.workingMinutes || 0) : '—'}
           label="Today's Hours"
           variant="info"
         />
