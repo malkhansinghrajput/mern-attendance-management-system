@@ -13,20 +13,28 @@ const app = express();
 // ─── Security Middleware ──────────────────────────────────────────────────────
 app.use(helmet());
 
-// CORS — only allow configured client origin
-const allowedOrigins = process.env.CLIENT_URL
+// CORS — allow configured client origins and all localhost/127.0.0.1 ports in development
+const configuredOrigins = process.env.CLIENT_URL
   ? process.env.CLIENT_URL.split(',').map((o) => o.trim())
-  : ['http://localhost:5173'];
+  : ['http://localhost:5173', 'http://localhost:5174'];
 
 app.use(
   cors({
     origin: (origin, callback) => {
       // Allow non-origin requests (mobile apps, Postman)
-      if (!origin || allowedOrigins.includes(origin)) {
-        callback(null, true);
-      } else {
-        callback(new Error('Not allowed by CORS'));
+      if (!origin) return callback(null, true);
+
+      // In development, permit any localhost / 127.0.0.1 port
+      const isLocalhost = /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin);
+      if (process.env.NODE_ENV !== 'production' && isLocalhost) {
+        return callback(null, true);
       }
+
+      if (configuredOrigins.includes(origin)) {
+        return callback(null, true);
+      }
+
+      callback(new Error('Not allowed by CORS'));
     },
     credentials: true,
   })

@@ -1,3 +1,11 @@
+const dns = require('dns');
+// Use reliable public DNS resolvers (Google / Cloudflare) to prevent Windows querySrv ECONNREFUSED on MongoDB Atlas
+try {
+  dns.setServers(['8.8.8.8', '1.1.1.1']);
+} catch {
+  // fallback silently if custom DNS setting is restricted
+}
+
 require('dotenv').config();
 
 // Set timezone BEFORE anything else
