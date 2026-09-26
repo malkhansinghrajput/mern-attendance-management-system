@@ -9,6 +9,7 @@ import '../../styles/index.css';
 const ROLES = [
   { value: 'employee', label: '👤 Employee' },
   { value: 'manager', label: '🧑‍💼 Manager' },
+  { value: 'admin', label: '👑 Admin' },
 ];
 
 const SignupPage = () => {
@@ -46,9 +47,16 @@ const SignupPage = () => {
     if (form.managerId.trim()) payload.managerId = form.managerId.trim();
 
     try {
-      await signup(payload).unwrap();
+      const res = await signup(payload).unwrap();
       toast.success('Account created! Welcome 🎉');
-      navigate('/', { replace: true });
+      const userRole = res?.data?.user?.role || form.role;
+      const targetDashboard =
+        userRole === 'admin'
+          ? '/admin/dashboard'
+          : userRole === 'manager'
+          ? '/manager/dashboard'
+          : '/employee/dashboard';
+      navigate(targetDashboard, { replace: true });
     } catch (err) {
       toast.error(parseApiError(err));
     }

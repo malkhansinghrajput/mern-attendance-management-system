@@ -30,9 +30,19 @@ const LoginPage = () => {
     setErrors({});
 
     try {
-      await login({ email: form.email.trim().toLowerCase(), password: form.password }).unwrap();
+      const res = await login({ email: form.email.trim().toLowerCase(), password: form.password }).unwrap();
       toast.success('Welcome back! 👋');
-      navigate(from, { replace: true });
+
+      const userRole = res?.data?.user?.role;
+      const targetDashboard =
+        userRole === 'admin'
+          ? '/admin/dashboard'
+          : userRole === 'manager'
+          ? '/manager/dashboard'
+          : '/employee/dashboard';
+
+      const redirectTo = from && from !== '/' && from !== '/login' ? from : targetDashboard;
+      navigate(redirectTo, { replace: true });
     } catch (err) {
       toast.error(parseApiError(err));
     }
