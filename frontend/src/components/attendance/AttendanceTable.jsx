@@ -88,14 +88,31 @@ const AttendanceTable = ({
                 </td>
                 <td>
                   {rec.punchInLocation ? (
-                    <a
-                      href={`https://maps.google.com/?q=${rec.punchInLocation.lat},${rec.punchInLocation.lng}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="map-link"
-                    >
-                      🗺️ Map
-                    </a>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', maxWidth: '220px' }}>
+                      {rec.punchInLocation.address ? (
+                        <span
+                          style={{
+                            fontSize: '0.78rem',
+                            color: 'var(--text-secondary)',
+                            whiteSpace: 'nowrap',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            display: 'block',
+                          }}
+                          title={rec.punchInLocation.address}
+                        >
+                          📍 {rec.punchInLocation.address}
+                        </span>
+                      ) : null}
+                      <a
+                        href={`https://maps.google.com/?q=${rec.punchInLocation.lat},${rec.punchInLocation.lng}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="map-link"
+                      >
+                        🗺️ View Map ({rec.punchInLocation.lat.toFixed(3)}, {rec.punchInLocation.lng.toFixed(3)})
+                      </a>
+                    </div>
                   ) : (
                     <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>—</span>
                   )}

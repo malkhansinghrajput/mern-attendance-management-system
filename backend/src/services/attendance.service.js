@@ -32,6 +32,7 @@ const punchIn = async (userId, { selfieUrl, location }) => {
       lat: location.lat,
       lng: location.lng,
       accuracy: location.accuracy || null,
+      address: location.address || null,
       capturedAt: new Date(),
     },
     attendanceStatus: ATTENDANCE_STATUS.ACTIVE,
@@ -79,6 +80,7 @@ const punchOut = async (userId, { selfieUrl, location }) => {
       lat: location.lat,
       lng: location.lng,
       accuracy: location.accuracy || null,
+      address: location.address || null,
       capturedAt: new Date(),
     };
   }

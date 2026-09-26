@@ -258,12 +258,20 @@ const PunchCard = ({ attendance }) => {
             )}
 
             {location ? (
-              <div className="alert alert-success">
-                <span>📍</span>
-                <span>
-                  Location captured: {location.lat.toFixed(4)}, {location.lng.toFixed(4)}
+              <div className="alert alert-success" style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', textAlign: 'left' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 600 }}>
+                  <span>📍</span>
+                  <span>Location Captured</span>
+                </div>
+                {location.address && (
+                  <p style={{ fontSize: '0.85rem', color: 'var(--text-primary)', margin: 0 }}>
+                    <strong>Address:</strong> {location.address}
+                  </p>
+                )}
+                <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', margin: 0 }}>
+                  GPS: {location.lat.toFixed(5)}, {location.lng.toFixed(5)}
                   {location.accuracy && ` (±${Math.round(location.accuracy)}m)`}
-                </span>
+                </p>
               </div>
             ) : (
               <Button
@@ -273,7 +281,7 @@ const PunchCard = ({ attendance }) => {
                 fullWidth
                 id="btn-get-location"
               >
-                📍 Get My Location
+                📍 Get My Location & Address
               </Button>
             )}
 
@@ -294,18 +302,25 @@ const PunchCard = ({ attendance }) => {
         {step === 3 && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
             <div className="card" style={{ padding: '1rem' }}>
-              <div style={{ fontSize: '0.85rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+              <div style={{ fontSize: '0.85rem', display: 'flex', flexDirection: 'column', gap: '0.65rem' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                   <span style={{ color: 'var(--text-muted)' }}>Selfie</span>
                   <span style={{ color: selfieUrl ? 'var(--color-success)' : 'var(--text-muted)' }}>
-                    {selfieUrl ? '✅ Uploaded' : '⏭️ Skipped'}
+                    {selfieUrl ? '✅ Captured' : '⏭️ Skipped'}
                   </span>
                 </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <span style={{ color: 'var(--text-muted)' }}>Location</span>
-                  <span style={{ color: location ? 'var(--color-success)' : 'var(--text-muted)' }}>
-                    {location ? `✅ ${location.lat.toFixed(4)}, ${location.lng.toFixed(4)}` : '⏭️ Skipped'}
-                  </span>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span style={{ color: 'var(--text-muted)' }}>Location</span>
+                    <span style={{ color: location ? 'var(--color-success)' : 'var(--text-muted)' }}>
+                      {location ? '✅ Captured' : '⏭️ Skipped'}
+                    </span>
+                  </div>
+                  {location?.address && (
+                    <span style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', background: 'var(--bg-glass)', padding: '4px 8px', borderRadius: '4px' }}>
+                      📍 {location.address}
+                    </span>
+                  )}
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                   <span style={{ color: 'var(--text-muted)' }}>Action</span>

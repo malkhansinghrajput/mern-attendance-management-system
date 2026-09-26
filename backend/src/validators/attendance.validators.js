@@ -4,7 +4,15 @@ const { VALIDATION_STATUS } = require('../constants/attendance');
 const punchInValidators = [
   body('selfieUrl')
     .notEmpty().withMessage('Selfie URL is required')
-    .isURL().withMessage('Selfie must be a valid URL'),
+    .custom((value) => {
+      if (typeof value !== 'string') return false;
+      return (
+        value.startsWith('http://') ||
+        value.startsWith('https://') ||
+        value.startsWith('data:image/') ||
+        value.startsWith('/')
+      );
+    }).withMessage('Selfie must be a valid URL or image data'),
 
   body('location')
     .notEmpty().withMessage('Location is required'),
@@ -14,6 +22,11 @@ const punchInValidators = [
 
   body('location.lng')
     .isFloat({ min: -180, max: 180 }).withMessage('Longitude must be between -180 and 180'),
+
+  body('location.address')
+    .optional({ nullable: true })
+    .isString().withMessage('Address must be a string')
+    .isLength({ max: 500 }).withMessage('Address cannot exceed 500 characters'),
 ];
 
 const punchOutValidators = [
@@ -28,6 +41,11 @@ const punchOutValidators = [
   body('location.lng')
     .optional()
     .isFloat({ min: -180, max: 180 }).withMessage('Longitude must be between -180 and 180'),
+
+  body('location.address')
+    .optional({ nullable: true })
+    .isString().withMessage('Address must be a string')
+    .isLength({ max: 500 }).withMessage('Address cannot exceed 500 characters'),
 ];
 
 const validateAttendanceValidators = [
