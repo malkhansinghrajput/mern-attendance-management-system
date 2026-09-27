@@ -8,7 +8,7 @@
     "dev": "nodemon src/server.js",
     "seed": "node src/scripts/seed.js",
     "migrate": "node src/scripts/migrateShiftDate.js",
-    "test": "node src/tests/crossMidnightShift.test.js"
+    "test": "node src/tests/crossMidnightShift.test.js && node src/tests/exportReport.test.js"
   },
   "keywords": [
     "attendance",
@@ -22,6 +22,7 @@
     "cloudinary": "^2.11.0",
     "cors": "^2.8.6",
     "dotenv": "^18.0.4",
+    "exceljs": "^4.4.0",
     "express": "^5.2.1",
     "express-rate-limit": "^8.7.0",
     "express-validator": "^7.3.2",
@@ -30,6 +31,7 @@
     "mongoose": "^9.10.2",
     "morgan": "^1.12.1",
     "multer": "^2.4.0",
+    "pdfkit": "^0.20.2",
     "socket.io": "^4.8.4",
     "winston": "^3.19.0"
   },

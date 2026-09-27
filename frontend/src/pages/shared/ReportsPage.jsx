@@ -1,11 +1,16 @@
 import { useState } from 'react';
+import toast from 'react-hot-toast';
 import DashboardLayout from '../../components/layout/DashboardLayout';
 import Spinner from '../../components/common/Spinner';
 import Button from '../../components/common/Button';
 import Badge from '../../components/common/Badge';
 import Modal from '../../components/common/Modal';
 import EmptyState from '../../components/common/EmptyState';
-import { useGetDailyReportQuery } from '../../features/reports/reportsApi';
+import {
+  useGetDailyReportQuery,
+  exportAttendancePDF,
+  exportAttendanceExcel,
+} from '../../features/reports/reportsApi';
 import { useAuth } from '../../hooks/useAuth';
 import { formatTime, formatWorkingHours, getTodayString } from '../../utils/formatters';
 import '../../styles/index.css';
@@ -17,6 +22,8 @@ const ReportsPage = () => {
   const [page, setPage] = useState(1);
   const [date, setDate] = useState(getTodayString());
   const [selfieModal, setSelfieModal] = useState(null);
+  const [isExportingPdf, setIsExportingPdf] = useState(false);
+  const [isExportingExcel, setIsExportingExcel] = useState(false);
 
   const { data, isLoading, isFetching } = useGetDailyReportQuery({
     date: date || undefined,
@@ -27,6 +34,23 @@ const ReportsPage = () => {
   const total = data?.data?.total || 0;
   const totalPages = Math.ceil(total / LIMIT);
   const reportDate = data?.data?.date || date;
+
+  const handleExport = async (format) => {
+    if (format === 'pdf') setIsExportingPdf(true);
+    else setIsExportingExcel(true);
+
+    try {
+      const filename = await (format === 'pdf'
+        ? exportAttendancePDF({ date })
+        : exportAttendanceExcel({ date }));
+      toast.success(`${format.toUpperCase()} report downloaded: ${filename}`);
+    } catch (err) {
+      toast.error(err.message || `Failed to export ${format.toUpperCase()} report`);
+    } finally {
+      if (format === 'pdf') setIsExportingPdf(false);
+      else setIsExportingExcel(false);
+    }
+  };
 
   return (
     <DashboardLayout>
@@ -39,23 +63,50 @@ const ReportsPage = () => {
         </p>
       </div>
 
-      {/* Filter */}
-      <div className="filter-bar">
-        <div className="form-group" style={{ margin: 0 }}>
-          <label className="form-label" htmlFor="report-date">Report Date</label>
-          <input
-            id="report-date" type="date"
-            className="form-input"
-            value={date} max={getTodayString()}
-            onChange={(e) => { setDate(e.target.value); setPage(1); }}
-          />
+      {/* Filter and Export Actions */}
+      <div className="filter-bar" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.75rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+          <div className="form-group" style={{ margin: 0 }}>
+            <label className="form-label" htmlFor="report-date">Report Date</label>
+            <input
+              id="report-date" type="date"
+              className="form-input"
+              value={date} max={getTodayString()}
+              onChange={(e) => { setDate(e.target.value); setPage(1); }}
+            />
+          </div>
+          <Button variant="ghost" size="sm" onClick={() => { setDate(getTodayString()); setPage(1); }}>
+            Today
+          </Button>
+          <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>
+            {total} record{total !== 1 ? 's' : ''} for {reportDate}
+          </span>
         </div>
-        <Button variant="ghost" size="sm" onClick={() => { setDate(getTodayString()); setPage(1); }}>
-          Today
-        </Button>
-        <span style={{ marginLeft: 'auto', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
-          {total} record{total !== 1 ? 's' : ''} for {reportDate}
-        </span>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => handleExport('pdf')}
+            disabled={isExportingPdf || isExportingExcel}
+            loading={isExportingPdf}
+            id="btn-export-pdf"
+            title="Export Daily Report as PDF"
+          >
+            📄 Export PDF
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => handleExport('excel')}
+            disabled={isExportingPdf || isExportingExcel}
+            loading={isExportingExcel}
+            id="btn-export-excel"
+            title="Export Daily Report as Excel"
+          >
+            📊 Export Excel
+          </Button>
+        </div>
       </div>
 
       {isLoading || isFetching ? <Spinner label="Loading report..." /> : records.length === 0 ? (

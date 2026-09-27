@@ -1,0 +1,6 @@
+{
+  "watch": ["src"],
+  "ext": "js,json",
+  "delay": 500,
+  "ignore": ["logs/*", "*.log", "*.pdf", "*.xlsx", "src/tests/*", "node_modules/*"]
+}
