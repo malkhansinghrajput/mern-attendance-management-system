@@ -29,7 +29,7 @@ const NAV_ITEMS = {
   ],
 };
 
-const Sidebar = () => {
+const Sidebar = ({ isOpen = false, onClose }) => {
   const { user, role } = useAuth();
   const navigate = useNavigate();
   const [logoutUser] = useLogoutUserMutation();
@@ -50,13 +50,30 @@ const Sidebar = () => {
     return () => document.removeEventListener('mousedown', handler);
   }, []);
 
+  // Keyboard Escape listener to close drawer on mobile
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        if (showNotifs) setShowNotifs(false);
+        else if (isOpen && onClose) onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose, showNotifs]);
+
   const handleLogout = async () => {
     try {
       await logoutUser().unwrap();
     } catch {
       // logout clears state regardless
     }
+    if (onClose) onClose();
     navigate('/login', { replace: true });
+  };
+
+  const handleNavClick = () => {
+    if (onClose) onClose();
   };
 
   const initials = user?.name
@@ -69,32 +86,52 @@ const Sidebar = () => {
   };
 
   return (
-    <aside className="sidebar" id="sidebar">
-      {/* Brand */}
-      <div className="sidebar-brand">
-        <div className="sidebar-brand-icon">📍</div>
-        <div>
-          <div className="sidebar-brand-name">AttendPro</div>
-          <div className="sidebar-brand-sub">Management System</div>
-        </div>
-      </div>
+    <>
+      {/* Mobile Drawer Backdrop */}
+      <div
+        className={`sidebar-backdrop${isOpen ? ' open' : ''}`}
+        onClick={onClose}
+        aria-hidden="true"
+      />
 
-      {/* Navigation */}
-      <div className="sidebar-section">
-        <div className="sidebar-section-label">Navigation</div>
-        {navItems.map((item) => (
-          <NavLink
-            key={item.to}
-            to={item.to}
-            className={({ isActive }) =>
-              `sidebar-nav-item${isActive ? ' active' : ''}`
-            }
-          >
-            <span className="nav-icon">{item.icon}</span>
-            <span>{item.label}</span>
-          </NavLink>
-        ))}
-      </div>
+      <aside className={`sidebar${isOpen ? ' open' : ''}`} id="sidebar">
+        {/* Brand */}
+        <div className="sidebar-brand">
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+            <div className="sidebar-brand-icon">📍</div>
+            <div>
+              <div className="sidebar-brand-name">AttendPro</div>
+              <div className="sidebar-brand-sub">Management System</div>
+            </div>
+          </div>
+          {onClose && (
+            <button
+              onClick={onClose}
+              className="sidebar-close-btn"
+              aria-label="Close menu"
+            >
+              ✕
+            </button>
+          )}
+        </div>
+
+        {/* Navigation */}
+        <div className="sidebar-section">
+          <div className="sidebar-section-label">Navigation</div>
+          {navItems.map((item) => (
+            <NavLink
+              key={item.to}
+              to={item.to}
+              onClick={handleNavClick}
+              className={({ isActive }) =>
+                `sidebar-nav-item${isActive ? ' active' : ''}`
+              }
+            >
+              <span className="nav-icon">{item.icon}</span>
+              <span>{item.label}</span>
+            </NavLink>
+          ))}
+        </div>
 
       {/* Notification Bell */}
       <div className="sidebar-section" ref={notifRef} style={{ position: 'relative' }}>
@@ -258,7 +295,8 @@ const Sidebar = () => {
         </button>
       </div>
     </aside>
-  );
+  </>
+);
 };
 
 export default Sidebar;

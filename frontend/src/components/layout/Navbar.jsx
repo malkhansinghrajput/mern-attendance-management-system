@@ -20,7 +20,7 @@ const PAGE_TITLES = {
   '/reports': 'Reports',
 };
 
-const Navbar = () => {
+const Navbar = ({ onToggleSidebar, isSidebarOpen }) => {
   const { user } = useAuth();
   const { notifications, unreadCount, markAllRead, connected } = useSocket();
   const [showNotifs, setShowNotifs] = useState(false);
@@ -48,14 +48,25 @@ const Navbar = () => {
   return (
     <header className="navbar" style={{ position: 'relative' }}>
       <div className="navbar-left">
-        <span className="navbar-title">{title}</span>
-        <span className="navbar-date">
-          {formatDate(new Date())} · Welcome, {user?.name?.split(' ')[0] || 'User'}
-        </span>
+        {onToggleSidebar && (
+          <button
+            onClick={onToggleSidebar}
+            className="navbar-menu-btn"
+            aria-label={isSidebarOpen ? 'Close menu' : 'Open menu'}
+          >
+            {isSidebarOpen ? '✕' : '☰'}
+          </button>
+        )}
+        <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+          <span className="navbar-title">{title}</span>
+          <span className="navbar-date">
+            {formatDate(new Date())} · Welcome, {user?.name?.split(' ')[0] || 'User'}
+          </span>
+        </div>
       </div>
 
-      <div className="navbar-right" style={{ display: 'flex', alignItems: 'center', gap: '1.25rem' }}>
-        <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+      <div className="navbar-right" style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
+        <span className="navbar-tz" style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
           🌐 IST
         </span>
 
