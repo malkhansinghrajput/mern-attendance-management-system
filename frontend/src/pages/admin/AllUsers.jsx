@@ -5,19 +5,23 @@ import Button from '../../components/common/Button';
 import Spinner from '../../components/common/Spinner';
 import EmptyState from '../../components/common/EmptyState';
 import Modal from '../../components/common/Modal';
-import { useGetAllUsersQuery, useUpdateUserStatusMutation } from '../../features/users/usersApi';
+import { useGetAllUsersQuery, useUpdateUserStatusMutation, useCreateUserMutation } from '../../features/users/usersApi';
 import { parseApiError } from '../../utils/formatters';
 import toast from 'react-hot-toast';
 import '../../styles/index.css';
 
 const LIMIT = 15;
-const ROLES = ['', 'employee', 'manager', 'admin'];
+
+const EMPTY_FORM = { name: '', email: '', password: '', role: 'employee', managerId: '' };
 
 const AllUsers = () => {
   const [page, setPage] = useState(1);
   const [roleFilter, setRoleFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [confirmModal, setConfirmModal] = useState(null);
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [createForm, setCreateForm] = useState(EMPTY_FORM);
+  const [createErrors, setCreateErrors] = useState({});
 
   const { data, isLoading, isFetching } = useGetAllUsersQuery({
     page, limit: LIMIT,
@@ -25,6 +29,11 @@ const AllUsers = () => {
     isActive: statusFilter !== '' ? statusFilter : undefined,
   });
   const [updateUserStatus, { isLoading: updating }] = useUpdateUserStatusMutation();
+  const [createUser, { isLoading: creating }] = useCreateUserMutation();
+
+  // Also fetch all managers for the managerId dropdown
+  const { data: managerData } = useGetAllUsersQuery({ role: 'manager', limit: 100 });
+  const managers = managerData?.data?.users || [];
 
   const users = data?.data?.users || [];
   const total = data?.data?.total || 0;
@@ -41,11 +50,50 @@ const AllUsers = () => {
     }
   };
 
+  const validateCreate = () => {
+    const e = {};
+    if (!createForm.name.trim()) e.name = 'Name is required';
+    if (!createForm.email.trim()) e.email = 'Email is required';
+    if (!createForm.password || createForm.password.length < 6) e.password = 'Password must be at least 6 characters';
+    return e;
+  };
+
+  const handleCreateUser = async (e) => {
+    e.preventDefault();
+    const errs = validateCreate();
+    if (Object.keys(errs).length) { setCreateErrors(errs); return; }
+    try {
+      await createUser({
+        name: createForm.name.trim(),
+        email: createForm.email.trim(),
+        password: createForm.password,
+        role: createForm.role,
+        managerId: createForm.managerId || undefined,
+      }).unwrap();
+      toast.success('User created successfully!');
+      setShowCreateModal(false);
+      setCreateForm(EMPTY_FORM);
+      setCreateErrors({});
+    } catch (err) {
+      toast.error(parseApiError(err));
+    }
+  };
+
+  const handleCreateChange = (e) => {
+    setCreateForm((f) => ({ ...f, [e.target.name]: e.target.value }));
+    if (createErrors[e.target.name]) setCreateErrors((er) => ({ ...er, [e.target.name]: '' }));
+  };
+
   return (
     <DashboardLayout>
-      <div className="page-header">
-        <h1>User Management</h1>
-        <p>View and manage all users in the system</p>
+      <div className="page-header" style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem' }}>
+        <div>
+          <h1>User Management</h1>
+          <p>View and manage all users in the system</p>
+        </div>
+        <Button variant="primary" onClick={() => setShowCreateModal(true)} id="btn-create-user">
+          + Create User
+        </Button>
       </div>
 
       {/* Filters */}
@@ -143,7 +191,7 @@ const AllUsers = () => {
         </>
       )}
 
-      {/* Confirm Modal */}
+      {/* Toggle Status Modal */}
       <Modal
         isOpen={!!confirmModal}
         onClose={() => setConfirmModal(null)}
@@ -169,6 +217,58 @@ const AllUsers = () => {
             </div>
           </div>
         )}
+      </Modal>
+
+      {/* Create User Modal */}
+      <Modal
+        isOpen={showCreateModal}
+        onClose={() => { setShowCreateModal(false); setCreateForm(EMPTY_FORM); setCreateErrors({}); }}
+        title="➕ Create New User"
+        maxWidth="480px"
+      >
+        <form onSubmit={handleCreateUser} id="create-user-form" noValidate>
+          <div className="form-group">
+            <label className="form-label" htmlFor="cu-name">Full Name</label>
+            <input id="cu-name" name="name" className={`form-input${createErrors.name ? ' error' : ''}`}
+              placeholder="John Doe" value={createForm.name} onChange={handleCreateChange} />
+            {createErrors.name && <p className="form-error">{createErrors.name}</p>}
+          </div>
+          <div className="form-group">
+            <label className="form-label" htmlFor="cu-email">Email</label>
+            <input id="cu-email" name="email" type="email" className={`form-input${createErrors.email ? ' error' : ''}`}
+              placeholder="john@company.com" value={createForm.email} onChange={handleCreateChange} />
+            {createErrors.email && <p className="form-error">{createErrors.email}</p>}
+          </div>
+          <div className="form-group">
+            <label className="form-label" htmlFor="cu-password">Password (min 6 chars)</label>
+            <input id="cu-password" name="password" type="password" className={`form-input${createErrors.password ? ' error' : ''}`}
+              placeholder="••••••••" value={createForm.password} onChange={handleCreateChange} />
+            {createErrors.password && <p className="form-error">{createErrors.password}</p>}
+          </div>
+          <div className="form-group">
+            <label className="form-label" htmlFor="cu-role">Role</label>
+            <select id="cu-role" name="role" className="form-select" value={createForm.role} onChange={handleCreateChange}>
+              <option value="employee">Employee</option>
+              <option value="manager">Manager</option>
+              <option value="admin">Admin</option>
+            </select>
+          </div>
+          {createForm.role === 'employee' && (
+            <div className="form-group">
+              <label className="form-label" htmlFor="cu-manager">Assign Manager (optional)</label>
+              <select id="cu-manager" name="managerId" className="form-select" value={createForm.managerId} onChange={handleCreateChange}>
+                <option value="">— No manager —</option>
+                {managers.map((m) => (
+                  <option key={m._id} value={m._id}>{m.name} ({m.email})</option>
+                ))}
+              </select>
+            </div>
+          )}
+          <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end', marginTop: '0.5rem' }}>
+            <Button type="button" variant="ghost" onClick={() => setShowCreateModal(false)}>Cancel</Button>
+            <Button type="submit" variant="primary" loading={creating} id="btn-confirm-create-user">Create User</Button>
+          </div>
+        </form>
       </Modal>
     </DashboardLayout>
   );

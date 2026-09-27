@@ -11,9 +11,11 @@ require('dotenv').config();
 // Set timezone BEFORE anything else
 process.env.TZ = process.env.TZ || 'Asia/Kolkata';
 
+const http = require('http');
 const app = require('./app');
 const connectDB = require('./config/db');
 const { connectCloudinary } = require('./config/cloudinary');
+const { initSocket } = require('./socket/socketServer');
 const logger = require('./config/logger');
 
 const PORT = process.env.PORT || 5000;
@@ -26,10 +28,17 @@ const startServer = async () => {
     // Configure Cloudinary
     connectCloudinary();
 
-    // Start HTTP server
-    app.listen(PORT, () => {
+    // Create HTTP server from Express app
+    const httpServer = http.createServer(app);
+
+    // Initialize Socket.IO — must attach to httpServer, not app directly
+    initSocket(httpServer);
+
+    // Start listening
+    httpServer.listen(PORT, () => {
       logger.info(`Server running on port ${PORT} in ${process.env.NODE_ENV || 'development'} mode`);
       logger.info(`Timezone: ${process.env.TZ}`);
+      logger.info(`Socket.IO ready — real-time events enabled`);
     });
   } catch (error) {
     logger.error(`Server startup failed: ${error.message}`);

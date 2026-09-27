@@ -24,6 +24,10 @@ export const usersApi = createApi({
       query: (id) => `/${id}`,
       providesTags: (result, error, id) => [{ type: 'Users', id }],
     }),
+    createUser: builder.mutation({
+      query: (body) => ({ url: '/create', method: 'POST', body }),
+      invalidatesTags: ['Users'],
+    }),
     updateUserStatus: builder.mutation({
       query: ({ id, ...body }) => ({ url: `/${id}/status`, method: 'PATCH', body }),
       invalidatesTags: ['Users'],
@@ -35,5 +39,6 @@ export const {
   useGetAllUsersQuery,
   useGetTeamUsersQuery,
   useGetUserByIdQuery,
+  useCreateUserMutation,
   useUpdateUserStatusMutation,
 } = usersApi;

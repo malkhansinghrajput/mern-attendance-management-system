@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import toast from 'react-hot-toast';
 import CameraCapture from '../camera/CameraCapture';
 import Button from '../common/Button';
@@ -10,18 +10,86 @@ import { formatTime, formatWorkingHours, parseApiError } from '../../utils/forma
 import '../../styles/components.css';
 
 const API_URL = import.meta.env.VITE_API_URL;
+const STANDARD_SHIFT_MINUTES = 480; // 8 hours
+
+/**
+ * ShiftProgressBar — shows real-time elapsed shift time for active attendance.
+ * Updates every minute via setInterval.
+ */
+const ShiftProgressBar = ({ punchIn, workingMinutes }) => {
+  const [elapsed, setElapsed] = useState(workingMinutes || 0);
+
+  useEffect(() => {
+    if (!punchIn) return;
+    // Update immediately then every 30 seconds
+    const calc = () => {
+      const diffMs = new Date() - new Date(punchIn);
+      setElapsed(Math.floor(diffMs / 60000));
+    };
+    calc();
+    const timer = setInterval(calc, 30000);
+    return () => clearInterval(timer);
+  }, [punchIn]);
+
+  const pct = Math.min((elapsed / STANDARD_SHIFT_MINUTES) * 100, 100);
+  const isComplete = elapsed >= STANDARD_SHIFT_MINUTES;
+  const isOvertime = elapsed > STANDARD_SHIFT_MINUTES;
+  const remaining = STANDARD_SHIFT_MINUTES - elapsed;
+
+  return (
+    <div style={{ margin: '0 auto 1.25rem', maxWidth: '380px' }}>
+      {/* Progress bar */}
+      <div
+        style={{
+          background: 'var(--bg-glass)',
+          borderRadius: '999px',
+          height: '10px',
+          overflow: 'hidden',
+          marginBottom: '0.5rem',
+        }}
+      >
+        <div
+          style={{
+            height: '100%',
+            width: `${pct}%`,
+            background: isComplete
+              ? 'linear-gradient(90deg, #10b981, #34d399)'
+              : 'linear-gradient(90deg, #6366f1, #8b5cf6)',
+            borderRadius: '999px',
+            transition: 'width 0.6s ease',
+          }}
+        />
+      </div>
+
+      {/* Labels */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+        <span>⏱️ {formatWorkingHours(elapsed)}</span>
+        <span style={{ color: isComplete ? 'var(--color-success)' : 'var(--text-muted)', fontWeight: isComplete ? 700 : 400 }}>
+          {isComplete
+            ? isOvertime
+              ? `🔥 ${formatWorkingHours(elapsed - STANDARD_SHIFT_MINUTES)} overtime`
+              : '✅ Shift complete!'
+            : `${formatWorkingHours(remaining)} remaining`}
+        </span>
+        <span>8h target</span>
+      </div>
+    </div>
+  );
+};
 
 /**
  * PunchCard — the main employee punch-in/out widget.
  * Handles the full flow: camera → GPS → selfie upload → punch API.
+ * Also manages the 8-hour shift progress bar and OT prompt after punch-out.
  */
-const PunchCard = ({ attendance }) => {
+const PunchCard = ({ attendance, onRequestOvertime }) => {
   const [showPunchModal, setShowPunchModal] = useState(false);
   const [punchType, setPunchType] = useState(null); // 'in' | 'out'
   const [selfieBlob, setSelfieBlob] = useState(null);
   const [selfieUrl, setSelfieUrl] = useState(null);
   const [isUploading, setIsUploading] = useState(false);
   const [step, setStep] = useState(1); // 1=camera, 2=location, 3=confirm
+  const [showOtPrompt, setShowOtPrompt] = useState(false);
 
   const { location, error: geoError, isLoading: geoLoading, getLocation, clearLocation } = useGeolocation();
   const [punchIn, { isLoading: punchingIn }] = usePunchInMutation();
@@ -30,6 +98,13 @@ const PunchCard = ({ attendance }) => {
   const isActive = attendance?.attendanceStatus === 'active';
   const isPunchedIn = !!attendance?.punchIn;
   const isPunchedOut = !!attendance?.punchOut;
+  const isCompleted = attendance?.attendanceStatus === 'completed';
+  const isIncomplete = attendance?.attendanceStatus === 'incomplete';
+
+  // Show OT prompt after punch-out if no OT request yet and worked > 8h
+  const workedOvertime = (attendance?.workingMinutes || 0) > STANDARD_SHIFT_MINUTES;
+  const hasOtRequest = !!attendance?.overtimeRequest;
+  const shouldShowOtPrompt = isPunchedOut && workedOvertime && !hasOtRequest;
 
   const openPunchModal = (type) => {
     setPunchType(type);
@@ -42,8 +117,6 @@ const PunchCard = ({ attendance }) => {
 
   const handleCameraCapture = async (blob) => {
     setSelfieBlob(blob);
-
-    // Upload selfie to Cloudinary via backend
     setIsUploading(true);
     try {
       const token = localStorage.getItem('ams_token');
@@ -56,11 +129,10 @@ const PunchCard = ({ attendance }) => {
         body: formData,
       });
       const data = await res.json();
-
       if (!res.ok) throw new Error(data.error?.message || 'Upload failed');
 
       setSelfieUrl(data.data.url);
-      setStep(2); // Move to GPS step
+      setStep(2);
       toast.success('Selfie uploaded! Now get your location.');
     } catch (err) {
       toast.error(err.message || 'Failed to upload photo. Please try again.');
@@ -69,9 +141,7 @@ const PunchCard = ({ attendance }) => {
     }
   };
 
-  const handleGetLocation = () => {
-    getLocation();
-  };
+  const handleGetLocation = () => getLocation();
 
   const handlePunch = async () => {
     if (!selfieUrl && punchType === 'in') {
@@ -93,8 +163,13 @@ const PunchCard = ({ attendance }) => {
         await punchIn(body).unwrap();
         toast.success('Punched in successfully! Have a great day 🎉');
       } else {
-        await punchOut(body).unwrap();
-        toast.success('Punched out! Working hours recorded ✅');
+        const result = await punchOut(body).unwrap();
+        const mins = result?.data?.attendance?.workingMinutes || 0;
+        if (mins >= STANDARD_SHIFT_MINUTES) {
+          toast.success('Great work! 8-hour shift completed ✅');
+        } else {
+          toast.success('Punched out! Working hours recorded ✅');
+        }
       }
       setShowPunchModal(false);
     } catch (err) {
@@ -104,7 +179,7 @@ const PunchCard = ({ attendance }) => {
 
   const canPunch = punchType === 'in'
     ? (!!selfieUrl && !!location)
-    : (step >= 2); // For punch-out, selfie+location are optional
+    : (step >= 2);
 
   return (
     <>
@@ -124,7 +199,7 @@ const PunchCard = ({ attendance }) => {
 
         {/* Times */}
         {attendance && (
-          <div className="punch-status-row" style={{ maxWidth: '360px', margin: '0 auto 1.5rem' }}>
+          <div className="punch-status-row" style={{ maxWidth: '360px', margin: '0 auto 1.25rem' }}>
             <div className="punch-time-block">
               <div className="punch-time-label">🟢 Punch In</div>
               <div className="punch-time-value">
@@ -140,17 +215,35 @@ const PunchCard = ({ attendance }) => {
           </div>
         )}
 
-        {/* Working Hours */}
-        {attendance && (isActive || (attendance.workingMinutes || 0) > 0) && (
+        {/* ── Shift Progress Bar (only when active / punched-in) ─────────── */}
+        {isActive && attendance?.punchIn && (
+          <ShiftProgressBar
+            punchIn={attendance.punchIn}
+            workingMinutes={attendance.workingMinutes || 0}
+          />
+        )}
+
+        {/* Working Hours (when punched out) */}
+        {isPunchedOut && (attendance.workingMinutes || 0) > 0 && (
           <div style={{ textAlign: 'center', marginBottom: '1.25rem' }}>
-            <span className="working-hours-badge" style={{ fontSize: '0.9rem', padding: '0.4rem 0.9rem' }}>
-              ⏱️ Today's Working Hours: {formatWorkingHours(attendance.workingMinutes || 0)} {isActive ? '(Active)' : ''}
+            <span
+              className="working-hours-badge"
+              style={{
+                fontSize: '0.9rem',
+                padding: '0.4rem 0.9rem',
+                background: isCompleted
+                  ? 'linear-gradient(135deg,#10b981,#059669)'
+                  : 'linear-gradient(135deg,#f59e0b,#d97706)',
+              }}
+            >
+              {isCompleted ? '✅' : '⚠️'} {formatWorkingHours(attendance.workingMinutes)}
+              {isCompleted ? ' — Shift Complete' : ' — Incomplete Shift'}
             </span>
           </div>
         )}
 
         {/* Punch Buttons */}
-        <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'center' }}>
+        <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'center', flexWrap: 'wrap' }}>
           {!isPunchedIn && (
             <Button
               variant="success"
@@ -173,12 +266,41 @@ const PunchCard = ({ attendance }) => {
             </Button>
           )}
 
-          {isPunchedOut && (
+          {isPunchedOut && !shouldShowOtPrompt && (
             <div className="alert alert-success" style={{ margin: 0 }}>
               ✅ Attendance complete for today
             </div>
           )}
         </div>
+
+        {/* ── OT Prompt (show if worked > 8h and no OT request yet) ─────── */}
+        {shouldShowOtPrompt && (
+          <div
+            style={{
+              marginTop: '1.25rem',
+              padding: '1rem 1.25rem',
+              background: 'linear-gradient(135deg, rgba(245,158,11,0.15), rgba(217,119,6,0.1))',
+              border: '1px solid var(--color-warning)',
+              borderRadius: '12px',
+              textAlign: 'center',
+            }}
+          >
+            <p style={{ fontSize: '0.92rem', fontWeight: 700, color: 'var(--color-warning)', marginBottom: '0.5rem' }}>
+              🔥 You worked {formatWorkingHours((attendance?.workingMinutes || 0) - STANDARD_SHIFT_MINUTES)} beyond 8 hours!
+            </p>
+            <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginBottom: '0.85rem' }}>
+              Request overtime so your manager can approve the extra hours.
+            </p>
+            <Button
+              variant="warning"
+              size="sm"
+              onClick={() => onRequestOvertime && onRequestOvertime(attendance)}
+              id="btn-request-ot-from-punchcard"
+            >
+              ⏰ Request Overtime
+            </Button>
+          </div>
+        )}
 
         {/* Validation Remarks */}
         {attendance?.validationRemarks && (

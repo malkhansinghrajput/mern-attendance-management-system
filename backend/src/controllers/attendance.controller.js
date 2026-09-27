@@ -1,10 +1,31 @@
 const attendanceService = require('../services/attendance.service');
 const { sendSuccess } = require('../utils/response');
+const { emitToUser, emitToManager, emitToManagersAndAdmins } = require('../socket/socketServer');
+const User = require('../models/User');
 
 const punchIn = async (req, res, next) => {
   try {
     const { selfieUrl, location } = req.body;
     const attendance = await attendanceService.punchIn(req.user._id, { selfieUrl, location });
+
+    // ── Real-time: notify manager & admins of punch-in ──────────────────────
+    if (req.user.managerId) {
+      emitToManager(req.user.managerId, 'attendance:punch-in', {
+        employee: { _id: req.user._id, name: req.user.name, email: req.user.email },
+        attendance,
+        timestamp: new Date(),
+      });
+    } else {
+      emitToManagersAndAdmins('attendance:punch-in', {
+        employee: { _id: req.user._id, name: req.user.name, email: req.user.email },
+        attendance,
+        timestamp: new Date(),
+      });
+    }
+
+    // Notify the employee themselves so other tabs refresh
+    emitToUser(req.user._id, 'attendance:updated', { attendance });
+
     return sendSuccess(res, 201, 'Punched in successfully', { attendance });
   } catch (error) {
     next(error);
@@ -15,6 +36,25 @@ const punchOut = async (req, res, next) => {
   try {
     const { selfieUrl, location } = req.body;
     const attendance = await attendanceService.punchOut(req.user._id, { selfieUrl, location });
+
+    // ── Real-time: notify manager & admins of punch-out ──────────────────────
+    if (req.user.managerId) {
+      emitToManager(req.user.managerId, 'attendance:punch-out', {
+        employee: { _id: req.user._id, name: req.user.name, email: req.user.email },
+        attendance,
+        timestamp: new Date(),
+      });
+    } else {
+      emitToManagersAndAdmins('attendance:punch-out', {
+        employee: { _id: req.user._id, name: req.user.name, email: req.user.email },
+        attendance,
+        timestamp: new Date(),
+      });
+    }
+
+    // Personal refresh event
+    emitToUser(req.user._id, 'attendance:updated', { attendance });
+
     return sendSuccess(res, 200, 'Punched out successfully', { attendance });
   } catch (error) {
     next(error);
@@ -69,6 +109,19 @@ const validateAttendance = async (req, res, next) => {
       req.user.role,
       { validationStatus, validationRemarks }
     );
+
+    // ── Real-time: notify the employee whose attendance was validated ────────
+    const employeeId = attendance.userId?._id || attendance.userId;
+    if (employeeId) {
+      emitToUser(employeeId, 'attendance:validated', {
+        attendance,
+        validationStatus,
+        validationRemarks,
+        validatedBy: { name: req.user.name, role: req.user.role },
+        timestamp: new Date(),
+      });
+    }
+
     return sendSuccess(res, 200, 'Attendance validated', { attendance });
   } catch (error) {
     next(error);

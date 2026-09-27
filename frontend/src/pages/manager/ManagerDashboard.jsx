@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import DashboardLayout from '../../components/layout/DashboardLayout';
 import Spinner from '../../components/common/Spinner';
 import Badge from '../../components/common/Badge';
@@ -7,6 +8,7 @@ import Button from '../../components/common/Button';
 import { useGetTeamAttendanceQuery } from '../../features/attendance/attendanceApi';
 import { useGetPendingOvertimeQuery } from '../../features/overtime/overtimeApi';
 import { useGetTeamUsersQuery } from '../../features/users/usersApi';
+import { useSocket } from '../../context/SocketContext';
 import { getTodayString, formatTime } from '../../utils/formatters';
 import '../../styles/index.css';
 import '../../styles/components.css';
@@ -21,9 +23,25 @@ const StatCard = ({ icon, value, label, variant = 'primary' }) => (
 
 const ManagerDashboard = () => {
   const today = getTodayString();
-  const { data: teamAttData, isLoading: attLoading } = useGetTeamAttendanceQuery({ date: today, page: 1, limit: 20 });
-  const { data: pendingOtData } = useGetPendingOvertimeQuery({ page: 1, limit: 5 });
+  const { data: teamAttData, isLoading: attLoading, refetch: refetchTeamAtt } = useGetTeamAttendanceQuery({ date: today, page: 1, limit: 20 });
+  const { data: pendingOtData, refetch: refetchOT } = useGetPendingOvertimeQuery({ page: 1, limit: 5 });
   const { data: teamData } = useGetTeamUsersQuery();
+  const { socket } = useSocket();
+
+  // Real-time: refetch when team events arrive
+  useEffect(() => {
+    if (!socket) return;
+    const onAttendance = () => refetchTeamAtt();
+    const onOT = () => refetchOT();
+    socket.on('attendance:punch-in', onAttendance);
+    socket.on('attendance:punch-out', onAttendance);
+    socket.on('overtime:new-request', onOT);
+    return () => {
+      socket.off('attendance:punch-in', onAttendance);
+      socket.off('attendance:punch-out', onAttendance);
+      socket.off('overtime:new-request', onOT);
+    };
+  }, [socket, refetchTeamAtt, refetchOT]);
 
   const teamAttendance = teamAttData?.data?.attendances || [];
   const pendingOT = pendingOtData?.data?.requests || [];

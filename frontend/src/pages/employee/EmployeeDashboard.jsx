@@ -1,46 +1,92 @@
+import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
-import { useGetTodayAttendanceQuery } from '../../features/attendance/attendanceApi';
+import { useSocket } from '../../context/SocketContext';
+import { useGetTodayAttendanceQuery, useGetMyAttendanceQuery } from '../../features/attendance/attendanceApi';
 import { useGetMyOvertimeQuery } from '../../features/overtime/overtimeApi';
 import DashboardLayout from '../../components/layout/DashboardLayout';
 import PunchCard from '../../components/attendance/PunchCard';
 import AttendanceTable from '../../components/attendance/AttendanceTable';
 import Spinner from '../../components/common/Spinner';
 import Badge from '../../components/common/Badge';
-import { useGetMyAttendanceQuery } from '../../features/attendance/attendanceApi';
 import { formatDate, formatWorkingHours } from '../../utils/formatters';
 import '../../styles/index.css';
 import '../../styles/components.css';
 
-const StatCard = ({ icon, value, label, variant = 'primary' }) => (
+const STANDARD_SHIFT_MINUTES = 480;
+
+const StatCard = ({ icon, value, label, variant = 'primary', subtitle }) => (
   <div className={`stat-card ${variant}`}>
     <div className="stat-card-icon">{icon}</div>
     <div className="stat-card-value">{value}</div>
     <div className="stat-card-label">{label}</div>
+    {subtitle && <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>{subtitle}</div>}
   </div>
 );
 
 const EmployeeDashboard = () => {
   const { user } = useAuth();
-  const { data: todayData, isLoading: todayLoading } = useGetTodayAttendanceQuery(undefined, {
+  const navigate = useNavigate();
+  const { socket } = useSocket();
+
+  const {
+    data: todayData,
+    isLoading: todayLoading,
+    refetch: refetchToday,
+  } = useGetTodayAttendanceQuery(undefined, {
+    // Keep 30s polling as fallback — socket events are primary
     pollingInterval: 30000,
   });
-  const { data: historyData } = useGetMyAttendanceQuery({ page: 1, limit: 7 }, {
-    pollingInterval: 30000,
-  });
+
+  const {
+    data: historyData,
+    refetch: refetchHistory,
+  } = useGetMyAttendanceQuery({ page: 1, limit: 7 });
+
   const { data: otData } = useGetMyOvertimeQuery({ page: 1, limit: 3 });
+
+  // ── Real-time: refetch when socket fires attendance events ─────────────────
+  useEffect(() => {
+    if (!socket) return;
+    const onUpdate = () => {
+      refetchToday();
+      refetchHistory();
+    };
+    // Listen to own attendance update events
+    socket.on('attendance:updated', onUpdate);
+    socket.on('attendance:validated', onUpdate);
+    socket.on('overtime:approved', onUpdate);
+    socket.on('overtime:rejected', onUpdate);
+    return () => {
+      socket.off('attendance:updated', onUpdate);
+      socket.off('attendance:validated', onUpdate);
+      socket.off('overtime:approved', onUpdate);
+      socket.off('overtime:rejected', onUpdate);
+    };
+  }, [socket, refetchToday, refetchHistory]);
 
   const attendance = todayData?.data?.attendance;
   const history = historyData?.data?.attendances || [];
   const otRequests = otData?.data?.requests || [];
 
-  const thisMonthDays = history.filter((a) => a.attendanceStatus === 'completed').length;
+  // Stats
+  const completedDays = history.filter((a) => a.attendanceStatus === 'completed').length;
+  const incompleteDays = history.filter((a) => a.attendanceStatus === 'incomplete').length;
   const totalHours = history.reduce((sum, a) => sum + (a.workingMinutes || 0), 0);
+
+  const todayMinutes = attendance?.workingMinutes || 0;
+  const isActive = attendance?.attendanceStatus === 'active';
 
   const greeting = () => {
     const h = new Date().getHours();
     if (h < 12) return 'Good Morning';
     if (h < 17) return 'Good Afternoon';
     return 'Good Evening';
+  };
+
+  // Navigate to OT page with the record pre-selected
+  const handleRequestOvertime = () => {
+    navigate('/employee/overtime');
   };
 
   return (
@@ -54,27 +100,46 @@ const EmployeeDashboard = () => {
       {/* Stats */}
       <div className="stats-grid">
         <StatCard
-          icon="✅"
-          value={attendance?.attendanceStatus === 'active' ? 'Active' : attendance?.attendanceStatus || 'Not In'}
+          icon={isActive ? '⚡' : attendance?.attendanceStatus === 'completed' ? '✅' : '📋'}
+          value={
+            isActive ? 'Active'
+            : attendance?.attendanceStatus === 'completed' ? 'Completed'
+            : attendance?.attendanceStatus === 'incomplete' ? 'Incomplete'
+            : 'Not In'
+          }
           label="Today's Status"
-          variant={attendance?.attendanceStatus === 'active' ? 'success' : attendance?.attendanceStatus === 'completed' ? 'info' : 'primary'}
+          subtitle={
+            isActive ? 'Shift in progress'
+            : attendance?.attendanceStatus === 'completed' ? '≥ 8h shift done'
+            : attendance?.attendanceStatus === 'incomplete' ? '< 8h — incomplete'
+            : 'Not punched in yet'
+          }
+          variant={
+            isActive ? 'success'
+            : attendance?.attendanceStatus === 'completed' ? 'info'
+            : attendance?.attendanceStatus === 'incomplete' ? 'warning'
+            : 'primary'
+          }
         />
         <StatCard
           icon="⏱️"
-          value={attendance ? formatWorkingHours(attendance.workingMinutes || 0) : '—'}
+          value={attendance ? formatWorkingHours(todayMinutes) : '—'}
           label="Today's Hours"
+          subtitle={attendance ? `of 8h target (${todayMinutes >= STANDARD_SHIFT_MINUTES ? '✅ met' : `${STANDARD_SHIFT_MINUTES - Math.min(todayMinutes, STANDARD_SHIFT_MINUTES)}m left`})` : 'No data'}
           variant="info"
         />
         <StatCard
           icon="📅"
-          value={`${thisMonthDays}`}
+          value={`${completedDays}`}
           label="Days Completed (Last 7)"
+          subtitle={`${incompleteDays} incomplete day${incompleteDays !== 1 ? 's' : ''}`}
           variant="success"
         />
         <StatCard
           icon="🕐"
           value={formatWorkingHours(totalHours)}
           label="Total Hours (Last 7)"
+          subtitle={`Avg: ${formatWorkingHours(Math.round(totalHours / Math.max(history.length, 1)))}/day`}
           variant="warning"
         />
       </div>
@@ -82,8 +147,10 @@ const EmployeeDashboard = () => {
       {/* Punch Card */}
       <div className="section">
         <div className="section-title">⚡ Attendance Actions</div>
-        {todayLoading ? <Spinner label="Loading today's attendance..." /> : (
-          <PunchCard attendance={attendance} />
+        {todayLoading ? (
+          <Spinner label="Loading today's attendance..." />
+        ) : (
+          <PunchCard attendance={attendance} onRequestOvertime={handleRequestOvertime} />
         )}
       </div>
 

@@ -1,4 +1,5 @@
 const User = require('../models/User');
+const bcrypt = require('bcryptjs');
 const { sendSuccess, sendError } = require('../utils/response');
 const { ERROR_CODES } = require('../constants/errors');
 
@@ -46,6 +47,26 @@ const getUserById = async (req, res, next) => {
   }
 };
 
+const createUser = async (req, res, next) => {
+  try {
+    const { name, email, password, role, managerId } = req.body;
+    if (!name || !email || !password) {
+      return sendError(res, 400, ERROR_CODES.VALIDATION_ERROR, 'name, email and password are required');
+    }
+    const existing = await User.findOne({ email });
+    if (existing) {
+      return sendError(res, 409, ERROR_CODES.EMAIL_ALREADY_EXISTS, 'Email already registered');
+    }
+    const VALID_ROLES = ['employee', 'manager', 'admin'];
+    const assignedRole = VALID_ROLES.includes(role) ? role : 'employee';
+    const passwordHash = await bcrypt.hash(password, 12);
+    const user = await User.create({ name, email, passwordHash, role: assignedRole, managerId: managerId || null });
+    return sendSuccess(res, 201, 'User created successfully', { user });
+  } catch (error) {
+    next(error);
+  }
+};
+
 const updateUserStatus = async (req, res, next) => {
   try {
     const { isActive } = req.body;
@@ -63,4 +84,4 @@ const updateUserStatus = async (req, res, next) => {
   }
 };
 
-module.exports = { getAllUsers, getTeamUsers, getUserById, updateUserStatus };
+module.exports = { getAllUsers, getTeamUsers, getUserById, createUser, updateUserStatus };
