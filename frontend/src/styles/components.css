@@ -233,6 +233,14 @@
   opacity: 0.85;
 }
 
+/* Light mode: logo was designed for dark bg — wrap it in a dark container */
+html[data-theme="light"] .sidebar-logo-img {
+  background: linear-gradient(135deg, #1e1e35 0%, #161627 100%);
+  border-radius: 12px;
+  padding: 5px 8px;
+  box-shadow: 0 4px 14px rgba(99, 102, 241, 0.25), 0 1px 4px rgba(0,0,0,0.2);
+}
+
 .sidebar-brand-text {
   display: flex;
   flex-direction: column;
@@ -398,7 +406,7 @@
   position: fixed;
   top: 0; left: var(--sidebar-width); right: 0;
   height: var(--navbar-height);
-  background: rgba(22, 22, 39, 0.85);
+  background: var(--navbar-bg, rgba(22, 22, 39, 0.92));
   border-bottom: 1px solid var(--border-subtle);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
@@ -407,6 +415,7 @@
   justify-content: space-between;
   padding: 0 2rem;
   z-index: 99;
+  transition: background 0.3s ease, border-color 0.3s ease;
 }
 
 .navbar-left {
@@ -429,6 +438,16 @@
   display: flex;
   align-items: center;
   gap: 1rem;
+}
+
+.navbar-tz {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  white-space: nowrap;
 }
 
 .navbar-logout {
