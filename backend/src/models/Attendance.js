@@ -25,6 +25,14 @@ const attendanceSchema = new mongoose.Schema(
       required: [true, 'Date is required'],
       match: [/^\d{4}-\d{2}-\d{2}$/, 'Date must be in YYYY-MM-DD format'],
     },
+    // Shift Date representing the date on which the shift started
+    shiftDate: {
+      type: String,
+      default: function () {
+        return this.date;
+      },
+      match: [/^\d{4}-\d{2}-\d{2}$/, 'shiftDate must be in YYYY-MM-DD format'],
+    },
 
     // Punch In
     punchIn: { type: Date, default: null },
@@ -36,8 +44,11 @@ const attendanceSchema = new mongoose.Schema(
     punchOutSelfie: { type: String, default: null },
     punchOutLocation: { type: locationSchema, default: null },
 
-    // Working hours (calculated server-side on punch-out)
+    // Working & shift duration fields (calculated server-side on punch-out)
     workingMinutes: { type: Number, default: 0 },
+    workedMinutes: { type: Number, default: 0 },
+    regularMinutes: { type: Number, default: 0 },
+    overtimeMinutes: { type: Number, default: 0 },
 
     // Overall attendance status
     attendanceStatus: {
@@ -72,10 +83,13 @@ const attendanceSchema = new mongoose.Schema(
   }
 );
 
-// One attendance record per user per day — prevents double punch-in
+// One attendance record per user per shift date — prevents double punch-in
 attendanceSchema.index({ userId: 1, date: 1 }, { unique: true });
+// Active attendance lookup index for cross-midnight shift punches
+attendanceSchema.index({ userId: 1, attendanceStatus: 1 });
 // Queries for daily reports
 attendanceSchema.index({ date: 1 });
+attendanceSchema.index({ shiftDate: 1 });
 // Manager validation queue
 attendanceSchema.index({ validationStatus: 1 });
 // Employee history

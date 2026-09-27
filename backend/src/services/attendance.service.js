@@ -2,22 +2,39 @@ const Attendance = require('../models/Attendance');
 const OvertimeRequest = require('../models/OvertimeRequest');
 const User = require('../models/User');
 const { getTodayDate } = require('../utils/dateUtils');
-const { calculateWorkingMinutes, determineAttendanceStatus } = require('./workingHours.service');
+const {
+  calculateWorkingMinutes,
+  calculateShiftDurations,
+  determineAttendanceStatus,
+} = require('./workingHours.service');
 const { ERROR_CODES } = require('../constants/errors');
 const { ATTENDANCE_STATUS, VALIDATION_STATUS } = require('../constants/attendance');
 const logger = require('../config/logger');
 
 /**
  * Punch in for an employee.
- * Creates a new attendance record for today.
+ * Creates a new attendance record for the current shift date.
+ * Enforces single active shift rule across midnight.
  */
 const punchIn = async (userId, { selfieUrl, location }) => {
-  const date = getTodayDate();
+  const shiftDate = getTodayDate();
 
-  // Check for existing record today
-  const existing = await Attendance.findOne({ userId, date });
-  if (existing) {
-    const err = new Error('Already punched in today');
+  // 1. Check for any currently ACTIVE attendance record (cross-midnight check)
+  const activeShift = await Attendance.findOne({
+    userId,
+    attendanceStatus: ATTENDANCE_STATUS.ACTIVE,
+  });
+  if (activeShift) {
+    const err = new Error('Already punched in and have an active shift in progress');
+    err.status = 409;
+    err.code = ERROR_CODES.ALREADY_PUNCHED_IN;
+    throw err;
+  }
+
+  // 2. Check for existing attendance record starting on today's shiftDate
+  const existingToday = await Attendance.findOne({ userId, date: shiftDate });
+  if (existingToday) {
+    const err = new Error('Already completed shift for today');
     err.status = 409;
     err.code = ERROR_CODES.ALREADY_PUNCHED_IN;
     throw err;
@@ -25,7 +42,8 @@ const punchIn = async (userId, { selfieUrl, location }) => {
 
   const attendance = await Attendance.create({
     userId,
-    date,
+    date: shiftDate,
+    shiftDate,
     punchIn: new Date(),
     punchInSelfie: selfieUrl,
     punchInLocation: {
@@ -36,41 +54,45 @@ const punchIn = async (userId, { selfieUrl, location }) => {
       capturedAt: new Date(),
     },
     attendanceStatus: ATTENDANCE_STATUS.ACTIVE,
+    workingMinutes: 0,
+    workedMinutes: 0,
+    regularMinutes: 0,
+    overtimeMinutes: 0,
   });
 
-  logger.info(`Punch in: userId=${userId}, date=${date}`);
+  logger.info(`Punch in: userId=${userId}, shiftDate=${shiftDate}`);
   return attendance.populate('userId', 'name email role');
 };
 
 /**
  * Punch out for an employee.
- * Updates attendance with punch-out time and calculates working hours.
+ * Finds the employee's active attendance record (regardless of calendar date boundary)
+ * and calculates workedMinutes, regularMinutes, overtimeMinutes.
  */
 const punchOut = async (userId, { selfieUrl, location }) => {
-  const date = getTodayDate();
+  // Find employee's active attendance record (supports cross-midnight shifts)
+  const attendance = await Attendance.findOne({
+    userId,
+    attendanceStatus: ATTENDANCE_STATUS.ACTIVE,
+  });
 
-  const attendance = await Attendance.findOne({ userId, date });
   if (!attendance) {
-    const err = new Error('No punch-in found for today');
+    const err = new Error('No active punch-in shift found');
     err.status = 409;
     err.code = ERROR_CODES.NOT_PUNCHED_IN;
     throw err;
   }
 
-  if (attendance.attendanceStatus !== ATTENDANCE_STATUS.ACTIVE) {
-    const err = new Error('Already punched out');
-    err.status = 409;
-    err.code = ERROR_CODES.ALREADY_PUNCHED_OUT;
-    throw err;
-  }
-
   const punchOutTime = new Date();
-  const workingMinutes = calculateWorkingMinutes(attendance.punchIn, punchOutTime);
-  const attendanceStatus = determineAttendanceStatus(workingMinutes);
+  const durations = calculateShiftDurations(attendance.punchIn, punchOutTime);
+  const status = determineAttendanceStatus(durations.workedMinutes);
 
   attendance.punchOut = punchOutTime;
-  attendance.workingMinutes = workingMinutes;
-  attendance.attendanceStatus = attendanceStatus;
+  attendance.workedMinutes = durations.workedMinutes;
+  attendance.workingMinutes = durations.workedMinutes; // backward compat
+  attendance.regularMinutes = durations.regularMinutes;
+  attendance.overtimeMinutes = durations.overtimeMinutes;
+  attendance.attendanceStatus = status;
 
   if (selfieUrl) {
     attendance.punchOutSelfie = selfieUrl;
@@ -86,7 +108,9 @@ const punchOut = async (userId, { selfieUrl, location }) => {
   }
 
   await attendance.save();
-  logger.info(`Punch out: userId=${userId}, workingMinutes=${workingMinutes}, status=${attendanceStatus}`);
+  logger.info(
+    `Punch out: userId=${userId}, shiftDate=${attendance.shiftDate || attendance.date}, workedMinutes=${durations.workedMinutes}, regularMinutes=${durations.regularMinutes}, overtimeMinutes=${durations.overtimeMinutes}, status=${status}`
+  );
 
   return attendance.populate('userId', 'name email role');
 };
@@ -97,21 +121,42 @@ const punchOut = async (userId, { selfieUrl, location }) => {
 const formatAttendanceRecord = (rec) => {
   if (!rec) return rec;
   const obj = typeof rec.toObject === 'function' ? rec.toObject() : { ...rec };
+  if (!obj.shiftDate) {
+    obj.shiftDate = obj.date;
+  }
   if (obj.attendanceStatus === ATTENDANCE_STATUS.ACTIVE && obj.punchIn && !obj.punchOut) {
-    obj.workingMinutes = calculateWorkingMinutes(obj.punchIn, new Date());
+    const elapsed = calculateWorkingMinutes(obj.punchIn, new Date());
+    obj.workingMinutes = elapsed;
+    obj.workedMinutes = elapsed;
+    obj.regularMinutes = Math.min(elapsed, 480);
+    obj.overtimeMinutes = Math.max(elapsed - 480, 0);
   }
   return obj;
 };
 
 /**
- * Get today's attendance for an employee.
+ * Get current/today's attendance for an employee.
+ * Prioritizes active shift (even if started on previous calendar day).
  */
 const getTodayAttendance = async (userId) => {
-  const date = getTodayDate();
-  const attendance = await Attendance.findOne({ userId, date })
+  // 1. Check for an active shift first (handles night shift running past midnight)
+  let attendance = await Attendance.findOne({
+    userId,
+    attendanceStatus: ATTENDANCE_STATUS.ACTIVE,
+  })
     .populate('userId', 'name email role')
     .populate('validatedBy', 'name role')
     .populate('overtimeRequest');
+
+  // 2. If no active shift, check for record on today's shiftDate
+  if (!attendance) {
+    const todayStr = getTodayDate();
+    attendance = await Attendance.findOne({ userId, date: todayStr })
+      .populate('userId', 'name email role')
+      .populate('validatedBy', 'name role')
+      .populate('overtimeRequest');
+  }
+
   return formatAttendanceRecord(attendance);
 };
 

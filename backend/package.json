@@ -7,7 +7,8 @@
     "start": "node src/server.js",
     "dev": "nodemon src/server.js",
     "seed": "node src/scripts/seed.js",
-    "test": "echo \"Tests to be added\" && exit 0"
+    "migrate": "node src/scripts/migrateShiftDate.js",
+    "test": "node src/tests/crossMidnightShift.test.js"
   },
   "keywords": [
     "attendance",
