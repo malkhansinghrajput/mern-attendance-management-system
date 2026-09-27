@@ -61,7 +61,7 @@ const LoginPage = () => {
           <img
             src="/logo.png"
             alt="AttendPro Logo"
-            style={{ maxHeight: '70px', width: 'auto', objectFit: 'contain', marginBottom: '0.5rem' }}
+            style={{ height: '90px', maxWidth: '220px', width: 'auto', objectFit: 'contain', objectPosition: 'center', marginBottom: '0.5rem', borderRadius: '10px' }}
           />
           <p>Sign in to your account</p>
         </div>

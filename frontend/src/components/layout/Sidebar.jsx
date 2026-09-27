@@ -100,19 +100,22 @@ const Sidebar = ({ isOpen = false, onClose }) => {
 
       <aside className={`sidebar${isOpen ? ' open' : ''}`} id="sidebar">
         {/* Brand */}
-        <div className="sidebar-brand" style={{ padding: '1rem 1.25rem' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-            <img
-              src="/logo.png"
-              alt="AttendPro Logo"
-              style={{ maxHeight: '44px', width: 'auto', objectFit: 'contain' }}
-            />
+        <div className="sidebar-brand">
+          <img
+            src="/logo.png"
+            alt="AttendPro Logo"
+            className="sidebar-logo-img"
+          />
+          <div className="sidebar-brand-text">
+            <span className="sidebar-brand-title">Attendance</span>
+            <span className="sidebar-brand-subtitle">Management</span>
           </div>
           {onClose && (
             <button
               onClick={onClose}
               className="sidebar-close-btn"
               aria-label="Close navigation"
+              style={{ flexShrink: 0, marginLeft: '0.25rem' }}
             >
               ✕
             </button>
