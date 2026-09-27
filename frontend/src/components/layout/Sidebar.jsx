@@ -25,6 +25,7 @@ const NAV_ITEMS = {
     { label: 'Validation', icon: '✅', to: '/admin/validation' },
     { label: 'Overtime', icon: '⏰', to: '/admin/overtime' },
     { label: 'Users', icon: '👤', to: '/admin/users' },
+    { label: 'Geofence Settings', icon: '⚙️', to: '/admin/settings' },
     { label: 'Reports', icon: '📊', to: '/reports' },
   ],
 };

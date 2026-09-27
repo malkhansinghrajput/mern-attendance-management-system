@@ -1,6 +1,8 @@
 const Attendance = require('../models/Attendance');
 const OvertimeRequest = require('../models/OvertimeRequest');
 const User = require('../models/User');
+const CompanySettings = require('../models/CompanySettings');
+const { calculateHaversineDistance, isValidCoordinate } = require('../utils/geoUtils');
 const { getTodayDate } = require('../utils/dateUtils');
 const {
   calculateWorkingMinutes,
@@ -10,6 +12,59 @@ const {
 const { ERROR_CODES } = require('../constants/errors');
 const { ATTENDANCE_STATUS, VALIDATION_STATUS } = require('../constants/attendance');
 const logger = require('../config/logger');
+
+/**
+ * Helper to validate location against company geofence settings.
+ */
+const validateGeofence = async (location) => {
+  const settings = await CompanySettings.getSettings();
+  const hasValidCoords = location && isValidCoordinate(location.lat, location.lng);
+
+  if (settings.geofenceEnabled) {
+    if (!hasValidCoords) {
+      const err = new Error('Location permission and valid GPS coordinates are required to punch in/out.');
+      err.status = 400;
+      err.code = ERROR_CODES.VALIDATION_ERROR;
+      throw err;
+    }
+
+    const distanceFromOffice = calculateHaversineDistance(
+      location.lat,
+      location.lng,
+      settings.latitude,
+      settings.longitude
+    );
+
+    if (distanceFromOffice > settings.radiusMeters) {
+      const err = new Error(
+        `Location outside allowed office geofence. You are ${distanceFromOffice}m away from ${settings.officeName} (maximum allowed is ${settings.radiusMeters}m).`
+      );
+      err.status = 403;
+      err.code = ERROR_CODES.GEOFENCE_OUT_OF_RANGE;
+      err.details = {
+        distanceFromOffice,
+        radiusMeters: settings.radiusMeters,
+        officeName: settings.officeName,
+      };
+      throw err;
+    }
+
+    return { settings, distanceFromOffice };
+  }
+
+  // Geofencing disabled: still calculate distanceFromOffice if valid coordinates provided
+  let distanceFromOffice = null;
+  if (hasValidCoords) {
+    distanceFromOffice = calculateHaversineDistance(
+      location.lat,
+      location.lng,
+      settings.latitude,
+      settings.longitude
+    );
+  }
+
+  return { settings, distanceFromOffice };
+};
 
 /**
  * Punch in for an employee.
@@ -40,6 +95,9 @@ const punchIn = async (userId, { selfieUrl, location }) => {
     throw err;
   }
 
+  // 3. Geofence validation
+  const { distanceFromOffice } = await validateGeofence(location);
+
   const attendance = await Attendance.create({
     userId,
     date: shiftDate,
@@ -51,6 +109,7 @@ const punchIn = async (userId, { selfieUrl, location }) => {
       lng: location.lng,
       accuracy: location.accuracy || null,
       address: location.address || null,
+      distanceFromOffice: distanceFromOffice !== null ? distanceFromOffice : null,
       capturedAt: new Date(),
     },
     attendanceStatus: ATTENDANCE_STATUS.ACTIVE,
@@ -60,7 +119,7 @@ const punchIn = async (userId, { selfieUrl, location }) => {
     overtimeMinutes: 0,
   });
 
-  logger.info(`Punch in: userId=${userId}, shiftDate=${shiftDate}`);
+  logger.info(`Punch in: userId=${userId}, shiftDate=${shiftDate}, distance=${distanceFromOffice}m`);
   return attendance.populate('userId', 'name email role');
 };
 
@@ -83,6 +142,9 @@ const punchOut = async (userId, { selfieUrl, location }) => {
     throw err;
   }
 
+  // 2. Geofence validation for punchOut
+  const { distanceFromOffice } = await validateGeofence(location);
+
   const punchOutTime = new Date();
   const durations = calculateShiftDurations(attendance.punchIn, punchOutTime);
   const status = determineAttendanceStatus(durations.workedMinutes);
@@ -103,6 +165,7 @@ const punchOut = async (userId, { selfieUrl, location }) => {
       lng: location.lng,
       accuracy: location.accuracy || null,
       address: location.address || null,
+      distanceFromOffice: distanceFromOffice !== null ? distanceFromOffice : null,
       capturedAt: new Date(),
     };
   }

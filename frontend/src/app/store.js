@@ -5,6 +5,7 @@ import { attendanceApi } from '../features/attendance/attendanceApi';
 import { overtimeApi } from '../features/overtime/overtimeApi';
 import { usersApi } from '../features/users/usersApi';
 import { reportsApi } from '../features/reports/reportsApi';
+import { settingsApi } from '../features/settings/settingsApi';
 
 // Combine all reducers into one root reducer
 const appReducer = combineReducers({
@@ -14,6 +15,7 @@ const appReducer = combineReducers({
   [overtimeApi.reducerPath]: overtimeApi.reducer,
   [usersApi.reducerPath]: usersApi.reducer,
   [reportsApi.reducerPath]: reportsApi.reducer,
+  [settingsApi.reducerPath]: settingsApi.reducer,
 });
 
 /**
@@ -45,6 +47,7 @@ export const store = configureStore({
       attendanceApi.middleware,
       overtimeApi.middleware,
       usersApi.middleware,
-      reportsApi.middleware
+      reportsApi.middleware,
+      settingsApi.middleware
     ),
 });

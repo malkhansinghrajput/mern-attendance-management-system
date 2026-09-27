@@ -205,12 +205,22 @@ const PunchCard = ({ attendance, onRequestOvertime }) => {
               <div className="punch-time-value">
                 {attendance.punchIn ? formatTime(attendance.punchIn) : '--:--'}
               </div>
+              {attendance.punchInLocation?.distanceFromOffice !== undefined && attendance.punchInLocation?.distanceFromOffice !== null && (
+                <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '2px' }}>
+                  📍 {attendance.punchInLocation.distanceFromOffice}m from office
+                </div>
+              )}
             </div>
             <div className="punch-time-block">
               <div className="punch-time-label">🔴 Punch Out</div>
               <div className="punch-time-value">
                 {attendance.punchOut ? formatTime(attendance.punchOut) : '--:--'}
               </div>
+              {attendance.punchOutLocation?.distanceFromOffice !== undefined && attendance.punchOutLocation?.distanceFromOffice !== null && (
+                <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '2px' }}>
+                  📍 {attendance.punchOutLocation.distanceFromOffice}m from office
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -403,7 +413,7 @@ const PunchCard = ({ attendance, onRequestOvertime }) => {
                 fullWidth
                 id="btn-get-location"
               >
-                📍 Get My Location & Address
+                {geoLoading ? '📍 Checking your location...' : '📍 Get My Location & Address'}
               </Button>
             )}
 

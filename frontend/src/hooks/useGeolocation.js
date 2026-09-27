@@ -71,6 +71,7 @@ export const useGeolocation = () => {
           lng: longitude,
           accuracy: accuracy,
           address: address,
+          timestamp: position.timestamp || Date.now(),
         });
         setIsLoading(false);
       },
@@ -78,10 +79,10 @@ export const useGeolocation = () => {
         setIsLoading(false);
         switch (err.code) {
           case err.PERMISSION_DENIED:
-            setError('Location access denied. Please enable location in your browser settings to punch in.');
+            setError('Location permission is required to punch in/out. Please allow browser location access.');
             break;
           case err.POSITION_UNAVAILABLE:
-            setError('Unable to determine your location. Please try again.');
+            setError('Your current location could not be determined. Please check your GPS signal.');
             break;
           case err.TIMEOUT:
             setError('Location request timed out. Please try again.');

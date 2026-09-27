@@ -7,6 +7,7 @@ const locationSchema = new mongoose.Schema(
     lng: { type: Number, required: true },
     accuracy: { type: Number, default: null },
     address: { type: String, default: null },
+    distanceFromOffice: { type: Number, default: null },
     capturedAt: { type: Date, default: Date.now },
   },
   { _id: false }

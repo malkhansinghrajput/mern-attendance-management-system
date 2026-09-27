@@ -29,6 +29,7 @@ import AllUsers from '../pages/admin/AllUsers';
 import AllAttendance from '../pages/admin/AllAttendance';
 import AdminValidation from '../pages/admin/AdminValidation';
 import AdminOvertime from '../pages/admin/AdminOvertime';
+import AdminSettingsPage from '../pages/admin/AdminSettingsPage';
 
 /**
  * RootRedirect — sends authenticated users to their role's home page.
@@ -160,6 +161,15 @@ const AppRouter = () => {
           element={
             <RoleRoute allowedRoles={['admin']}>
               <AdminOvertime />
+            </RoleRoute>
+          }
+        />
+
+        <Route
+          path="/admin/settings"
+          element={
+            <RoleRoute allowedRoles={['admin']}>
+              <AdminSettingsPage />
             </RoleRoute>
           }
         />
