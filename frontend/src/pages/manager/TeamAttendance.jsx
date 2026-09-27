@@ -5,7 +5,7 @@ import Spinner from '../../components/common/Spinner';
 import Button from '../../components/common/Button';
 import Modal from '../../components/common/Modal';
 import { useGetTeamAttendanceQuery, useValidateAttendanceMutation } from '../../features/attendance/attendanceApi';
-import { formatDate, getTodayString, parseApiError } from '../../utils/formatters';
+import { getTodayString, parseApiError } from '../../utils/formatters';
 import toast from 'react-hot-toast';
 import '../../styles/index.css';
 

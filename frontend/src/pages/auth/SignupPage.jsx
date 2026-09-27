@@ -42,7 +42,7 @@ const SignupPage = () => {
     if (form.managerId.trim()) payload.managerId = form.managerId.trim();
 
     try {
-      const res = await signup(payload).unwrap();
+      await signup(payload).unwrap();
       toast.success('Account created! Welcome 🎉');
       // New signups are always employees
       navigate('/employee/dashboard', { replace: true });

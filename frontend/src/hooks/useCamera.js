@@ -83,6 +83,26 @@ export const useCamera = () => {
   }, [attachStreamToVideo]);
 
   /**
+   * Stops the camera stream and cleans up resources.
+   */
+  const stopCamera = useCallback(() => {
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((track) => {
+        try {
+          track.stop();
+        } catch {
+          // ignore error
+        }
+      });
+      streamRef.current = null;
+    }
+    if (videoRef.current) {
+      videoRef.current.srcObject = null;
+    }
+    setIsOpen(false);
+  }, []);
+
+  /**
    * Captures the current video frame and converts to a Blob.
    */
   const capturePhoto = useCallback(() => {
@@ -134,7 +154,7 @@ export const useCamera = () => {
       'image/jpeg',
       0.85
     );
-  }, []);
+  }, [stopCamera]);
 
   /**
    * Retakes photo — clears capture and re-opens camera.
@@ -144,26 +164,6 @@ export const useCamera = () => {
     setCapturedPreview(null);
     openCamera();
   }, [openCamera]);
-
-  /**
-   * Stops the camera stream and cleans up resources.
-   */
-  const stopCamera = useCallback(() => {
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach((track) => {
-        try {
-          track.stop();
-        } catch {
-          // ignore error
-        }
-      });
-      streamRef.current = null;
-    }
-    if (videoRef.current) {
-      videoRef.current.srcObject = null;
-    }
-    setIsOpen(false);
-  }, []);
 
   /**
    * Full reset — close camera, clear all state.

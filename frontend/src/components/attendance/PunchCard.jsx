@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import toast from 'react-hot-toast';
 import CameraCapture from '../camera/CameraCapture';
 import Button from '../common/Button';
@@ -85,11 +85,9 @@ const ShiftProgressBar = ({ punchIn, workingMinutes }) => {
 const PunchCard = ({ attendance, onRequestOvertime }) => {
   const [showPunchModal, setShowPunchModal] = useState(false);
   const [punchType, setPunchType] = useState(null); // 'in' | 'out'
-  const [selfieBlob, setSelfieBlob] = useState(null);
   const [selfieUrl, setSelfieUrl] = useState(null);
   const [isUploading, setIsUploading] = useState(false);
   const [step, setStep] = useState(1); // 1=camera, 2=location, 3=confirm
-  const [showOtPrompt, setShowOtPrompt] = useState(false);
 
   const { location, error: geoError, isLoading: geoLoading, getLocation, clearLocation } = useGeolocation();
   const [punchIn, { isLoading: punchingIn }] = usePunchInMutation();
@@ -99,7 +97,6 @@ const PunchCard = ({ attendance, onRequestOvertime }) => {
   const isPunchedIn = !!attendance?.punchIn;
   const isPunchedOut = !!attendance?.punchOut;
   const isCompleted = attendance?.attendanceStatus === 'completed';
-  const isIncomplete = attendance?.attendanceStatus === 'incomplete';
 
   // Show OT prompt after punch-out if no OT request yet and worked > 8h
   const workedOvertime = (attendance?.workingMinutes || 0) > STANDARD_SHIFT_MINUTES;
@@ -108,7 +105,6 @@ const PunchCard = ({ attendance, onRequestOvertime }) => {
 
   const openPunchModal = (type) => {
     setPunchType(type);
-    setSelfieBlob(null);
     setSelfieUrl(null);
     clearLocation();
     setStep(1);
@@ -116,7 +112,6 @@ const PunchCard = ({ attendance, onRequestOvertime }) => {
   };
 
   const handleCameraCapture = async (blob) => {
-    setSelfieBlob(blob);
     setIsUploading(true);
     try {
       const token = localStorage.getItem('ams_token');
@@ -358,7 +353,7 @@ const PunchCard = ({ attendance, onRequestOvertime }) => {
             </p>
             <CameraCapture
               onCapture={handleCameraCapture}
-              onReset={() => { setSelfieBlob(null); setSelfieUrl(null); }}
+              onReset={() => { setSelfieUrl(null); }}
             />
             {isUploading && (
               <p style={{ textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.85rem', marginTop: '0.75rem' }}>

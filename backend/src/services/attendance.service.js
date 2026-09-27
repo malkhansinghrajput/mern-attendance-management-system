@@ -238,7 +238,8 @@ const getMyAttendance = async (userId, { page = 1, limit = 10, startDate, endDat
       .populate('overtimeRequest')
       .sort({ date: -1 })
       .skip(skip)
-      .limit(Number(limit)),
+      .limit(Number(limit))
+      .lean(),
     Attendance.countDocuments(query),
   ]);
 
@@ -266,7 +267,8 @@ const getTeamAttendance = async (managerId, { page = 1, limit = 20, userId, date
       .populate('overtimeRequest')
       .sort({ date: -1, createdAt: -1 })
       .skip(skip)
-      .limit(Number(limit)),
+      .limit(Number(limit))
+      .lean(),
     Attendance.countDocuments(query),
   ]);
 
@@ -295,7 +297,8 @@ const getAllAttendance = async ({ page = 1, limit = 20, userId, date, startDate,
       .populate('overtimeRequest')
       .sort({ date: -1, createdAt: -1 })
       .skip(skip)
-      .limit(Number(limit)),
+      .limit(Number(limit))
+      .lean(),
     Attendance.countDocuments(query),
   ]);
 

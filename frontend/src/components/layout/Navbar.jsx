@@ -1,7 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
-import { useLogoutUserMutation } from '../../features/auth/authApi';
 import { useSocket } from '../../context/SocketContext';
 import { formatDate } from '../../utils/formatters';
 import { useTheme } from '../../hooks/useTheme';
@@ -28,8 +26,6 @@ const PAGE_TITLES = {
 
 const Navbar = ({ onToggleSidebar, isSidebarOpen }) => {
   const { user } = useAuth();
-  const navigate = useNavigate();
-  const [logoutUser] = useLogoutUserMutation();
   const { notifications, unreadCount, markAllRead, connected } = useSocket();
   const { isDark, toggleTheme } = useTheme();
 
@@ -56,11 +52,6 @@ const Navbar = ({ onToggleSidebar, isSidebarOpen }) => {
     };
   }, []);
 
-  // eslint-disable-next-line no-unused-vars
-  const handleLogout = async () => {
-    try { await logoutUser().unwrap(); } catch { /* ignore */ }
-    navigate('/login', { replace: true });
-  };
 
   const toggleNotifs = () => {
     if (!showNotifs) markAllRead();

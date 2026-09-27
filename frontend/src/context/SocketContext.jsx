@@ -18,6 +18,7 @@ export const SocketProvider = ({ children }) => {
   const token = useSelector(selectToken);
   const isAuthenticated = useSelector(selectIsAuthenticated);
   const socketRef = useRef(null);
+  const [socket, setSocket] = useState(null);
   const [notifications, setNotifications] = useState([]);
   const [connected, setConnected] = useState(false);
 
@@ -42,6 +43,7 @@ export const SocketProvider = ({ children }) => {
       if (socketRef.current) {
         socketRef.current.disconnect();
         socketRef.current = null;
+        setSocket(null);
         setConnected(false);
         setNotifications([]);
       }
@@ -51,31 +53,32 @@ export const SocketProvider = ({ children }) => {
     // Already connected with same token
     if (socketRef.current?.connected) return;
 
-    const socket = io(import.meta.env.VITE_SOCKET_URL || import.meta.env.VITE_API_URL?.replace('/api', ''), {
+    const newSocket = io(import.meta.env.VITE_SOCKET_URL || import.meta.env.VITE_API_URL?.replace('/api', ''), {
       auth: { token },
       transports: ['websocket', 'polling'],
       reconnectionAttempts: 5,
       reconnectionDelay: 2000,
     });
 
-    socketRef.current = socket;
+    socketRef.current = newSocket;
+    setSocket(newSocket);
 
-    socket.on('connect', () => {
+    newSocket.on('connect', () => {
       setConnected(true);
-      console.log('[Socket] Connected:', socket.id);
+      console.log('[Socket] Connected:', newSocket.id);
     });
 
-    socket.on('disconnect', (reason) => {
+    newSocket.on('disconnect', (reason) => {
       setConnected(false);
       console.log('[Socket] Disconnected:', reason);
     });
 
-    socket.on('connect_error', (err) => {
+    newSocket.on('connect_error', (err) => {
       console.warn('[Socket] Connection error:', err.message);
     });
 
     // ── Attendance events ──────────────────────────────────────────────────
-    socket.on('attendance:punch-in', (data) => {
+    newSocket.on('attendance:punch-in', (data) => {
       addNotification({
         type: 'info',
         title: 'Punch In',
@@ -85,7 +88,7 @@ export const SocketProvider = ({ children }) => {
       });
     });
 
-    socket.on('attendance:punch-out', (data) => {
+    newSocket.on('attendance:punch-out', (data) => {
       addNotification({
         type: 'info',
         title: 'Punch Out',
@@ -95,12 +98,12 @@ export const SocketProvider = ({ children }) => {
       });
     });
 
-    socket.on('attendance:updated', () => {
+    newSocket.on('attendance:updated', () => {
       // Trigger RTK Query refetch by dispatching an invalidation
       // Components listening to this can call their refetch()
     });
 
-    socket.on('attendance:validated', (data) => {
+    newSocket.on('attendance:validated', (data) => {
       const isValid = data.validationStatus === 'valid';
       addNotification({
         type: isValid ? 'success' : 'warning',
@@ -112,7 +115,7 @@ export const SocketProvider = ({ children }) => {
     });
 
     // ── Overtime events ────────────────────────────────────────────────────
-    socket.on('overtime:new-request', (data) => {
+    newSocket.on('overtime:new-request', (data) => {
       addNotification({
         type: 'warning',
         title: 'New OT Request',
@@ -122,7 +125,7 @@ export const SocketProvider = ({ children }) => {
       });
     });
 
-    socket.on('overtime:approved', (data) => {
+    newSocket.on('overtime:approved', (data) => {
       addNotification({
         type: 'success',
         title: 'Overtime Approved ✅',
@@ -132,7 +135,7 @@ export const SocketProvider = ({ children }) => {
       });
     });
 
-    socket.on('overtime:rejected', (data) => {
+    newSocket.on('overtime:rejected', (data) => {
       addNotification({
         type: 'error',
         title: 'Overtime Rejected ❌',
@@ -143,13 +146,14 @@ export const SocketProvider = ({ children }) => {
     });
 
     return () => {
-      socket.disconnect();
+      newSocket.disconnect();
       socketRef.current = null;
+      setSocket(null);
     };
   }, [isAuthenticated, token, addNotification]);
 
   const value = {
-    socket: socketRef.current,
+    socket,
     connected,
     notifications,
     unreadCount: notifications.filter((n) => !n.read).length,

@@ -34,7 +34,8 @@ const getDailyReport = async (requesterId, requesterRole, { date, userId, page =
       .populate('overtimeRequest')
       .sort({ createdAt: -1 })
       .skip(skip)
-      .limit(Number(limit)),
+      .limit(Number(limit))
+      .lean(),
     Attendance.countDocuments(query),
   ]);
 
@@ -77,7 +78,8 @@ const getAdminStats = async () => {
   const [totalUsers, todayAttendance] = await Promise.all([
     User.countDocuments({ isActive: true }),
     Attendance.find({ date: today })
-      .populate('userId', 'name role'),
+      .select('validationStatus attendanceStatus')
+      .lean(),
   ]);
 
   const presentToday = todayAttendance.length;

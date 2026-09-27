@@ -93,8 +93,8 @@ attendanceSchema.index({ date: 1 });
 attendanceSchema.index({ shiftDate: 1 });
 // Manager validation queue
 attendanceSchema.index({ validationStatus: 1 });
-// Employee history
-attendanceSchema.index({ userId: 1 });
+// Compound index for date-sorted queries and pagination
+attendanceSchema.index({ date: -1, createdAt: -1 });
 
 const Attendance = mongoose.model('Attendance', attendanceSchema);
 
