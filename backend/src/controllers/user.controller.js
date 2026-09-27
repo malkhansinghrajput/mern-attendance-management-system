@@ -84,4 +84,44 @@ const updateUserStatus = async (req, res, next) => {
   }
 };
 
-module.exports = { getAllUsers, getTeamUsers, getUserById, createUser, updateUserStatus };
+const getMyProfile = async (req, res, next) => {
+  try {
+    const user = await User.findById(req.user._id).populate('managerId', 'name email');
+    if (!user) {
+      return sendError(res, 404, ERROR_CODES.USER_NOT_FOUND, 'User profile not found');
+    }
+    return sendSuccess(res, 200, 'User profile', { user });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const updateMyProfile = async (req, res, next) => {
+  try {
+    const { name, phone, avatarUrl } = req.body;
+    const updates = {};
+    if (name !== undefined) updates.name = name.trim();
+    if (phone !== undefined) updates.phone = phone.trim();
+    if (avatarUrl !== undefined) updates.avatarUrl = avatarUrl;
+
+    const user = await User.findByIdAndUpdate(
+      req.user._id,
+      { $set: updates },
+      { new: true, runValidators: true }
+    ).populate('managerId', 'name email');
+
+    return sendSuccess(res, 200, 'Profile updated successfully', { user });
+  } catch (error) {
+    next(error);
+  }
+};
+
+module.exports = {
+  getAllUsers,
+  getTeamUsers,
+  getUserById,
+  createUser,
+  updateUserStatus,
+  getMyProfile,
+  updateMyProfile,
+};

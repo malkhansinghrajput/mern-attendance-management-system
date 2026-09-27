@@ -11,6 +11,7 @@ const NAV_ITEMS = {
     { label: 'My Attendance', icon: '📋', to: '/employee/attendance' },
     { label: 'Overtime Requests', icon: '⏰', to: '/employee/overtime' },
     { label: 'Reports', icon: '📊', to: '/reports' },
+    { label: 'My Profile', icon: '👤', to: '/profile' },
   ],
   manager: [
     { label: 'Dashboard', icon: '🏠', to: '/manager/dashboard' },
@@ -18,6 +19,7 @@ const NAV_ITEMS = {
     { label: 'Validation', icon: '✅', to: '/manager/validation' },
     { label: 'Overtime Approval', icon: '⏰', to: '/manager/overtime' },
     { label: 'Reports', icon: '📊', to: '/reports' },
+    { label: 'My Profile', icon: '👤', to: '/profile' },
   ],
   admin: [
     { label: 'Dashboard', icon: '🏠', to: '/admin/dashboard' },
@@ -27,6 +29,7 @@ const NAV_ITEMS = {
     { label: 'Users', icon: '👤', to: '/admin/users' },
     { label: 'Geofence Settings', icon: '⚙️', to: '/admin/settings' },
     { label: 'Reports', icon: '📊', to: '/reports' },
+    { label: 'My Profile', icon: '👤', to: '/profile' },
   ],
 };
 
@@ -67,7 +70,7 @@ const Sidebar = ({ isOpen = false, onClose }) => {
     try {
       await logoutUser().unwrap();
     } catch {
-      // logout clears state regardless
+      // ignore
     }
     if (onClose) onClose();
     navigate('/login', { replace: true });
@@ -79,7 +82,7 @@ const Sidebar = ({ isOpen = false, onClose }) => {
 
   const initials = user?.name
     ? user.name.split(' ').map((n) => n[0]).slice(0, 2).join('').toUpperCase()
-    : '?';
+    : 'U';
 
   const toggleNotifs = () => {
     if (!showNotifs) markAllRead();
@@ -97,19 +100,19 @@ const Sidebar = ({ isOpen = false, onClose }) => {
 
       <aside className={`sidebar${isOpen ? ' open' : ''}`} id="sidebar">
         {/* Brand */}
-        <div className="sidebar-brand">
+        <div className="sidebar-brand" style={{ padding: '1rem 1.25rem' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-            <div className="sidebar-brand-icon">📍</div>
-            <div>
-              <div className="sidebar-brand-name">AttendPro</div>
-              <div className="sidebar-brand-sub">Management System</div>
-            </div>
+            <img
+              src="/logo.png"
+              alt="AttendPro Logo"
+              style={{ maxHeight: '44px', width: 'auto', objectFit: 'contain' }}
+            />
           </div>
           {onClose && (
             <button
               onClick={onClose}
               className="sidebar-close-btn"
-              aria-label="Close menu"
+              aria-label="Close navigation"
             >
               ✕
             </button>
@@ -134,170 +137,189 @@ const Sidebar = ({ isOpen = false, onClose }) => {
           ))}
         </div>
 
-      {/* Notification Bell */}
-      <div className="sidebar-section" ref={notifRef} style={{ position: 'relative' }}>
-        <button
-          onClick={toggleNotifs}
-          className={`sidebar-nav-item${showNotifs ? ' active' : ''}`}
-          style={{
-            width: '100%',
-            background: showNotifs ? 'var(--bg-glass-hover)' : 'none',
-            border: 'none',
-            cursor: 'pointer',
-            color: 'var(--text-secondary)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            padding: '0.65rem 0.75rem',
-          }}
-          aria-label="Notifications"
-        >
-          <span style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-            <span className="nav-icon">🔔</span>
-            <span>Notifications</span>
-          </span>
-          <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            {/* Live connection indicator */}
-            <span
-              title={connected ? 'Socket.IO Live' : 'Disconnected'}
-              style={{
-                width: '8px',
-                height: '8px',
-                borderRadius: '50%',
-                background: connected ? 'var(--color-success)' : 'var(--color-danger)',
-                flexShrink: 0,
-                boxShadow: connected ? '0 0 8px rgba(16,185,129,0.6)' : 'none',
-              }}
-            />
-            {unreadCount > 0 && (
-              <span
-                style={{
-                  background: 'var(--color-danger)',
-                  color: '#fff',
-                  borderRadius: '10px',
-                  fontSize: '0.7rem',
-                  padding: '1px 6px',
-                  fontWeight: 700,
-                  minWidth: '18px',
-                  textAlign: 'center',
-                }}
-              >
-                {unreadCount > 9 ? '9+' : unreadCount}
-              </span>
-            )}
-          </span>
-        </button>
-
-        {/* Notification panel fixed flyout */}
-        {showNotifs && (
-          <div
+        {/* Notifications */}
+        <div className="sidebar-section" ref={notifRef} style={{ position: 'relative' }}>
+          <button
+            onClick={toggleNotifs}
+            className={`sidebar-nav-item${showNotifs ? ' active' : ''}`}
             style={{
-              position: 'fixed',
-              left: 'calc(var(--sidebar-width, 260px) + 8px)',
-              bottom: '80px',
-              width: '340px',
-              maxHeight: '440px',
+              width: '100%',
+              background: showNotifs ? 'var(--bg-glass-hover)' : 'none',
+              border: 'none',
+              cursor: 'pointer',
+              color: 'var(--text-secondary)',
               display: 'flex',
-              flexDirection: 'column',
-              background: '#1e1e2d',
-              border: '1px solid var(--border-color, rgba(255,255,255,0.12))',
-              borderRadius: '14px',
-              boxShadow: '0 16px 48px rgba(0,0,0,0.6)',
-              zIndex: 99999,
-              backdropFilter: 'blur(16px)',
-              overflow: 'hidden',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              padding: '0.65rem 0.75rem',
             }}
+            aria-label="Open notifications"
           >
-            <div
-              style={{
-                padding: '0.85rem 1rem',
-                borderBottom: '1px solid var(--border-color, rgba(255,255,255,0.08))',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                background: 'rgba(255,255,255,0.03)',
-              }}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 700, fontSize: '0.9rem', color: '#fff' }}>
-                <span>🔔</span> Notifications
-                {notifications.length > 0 && (
-                  <span style={{ fontSize: '0.75rem', background: 'rgba(99,102,241,0.2)', color: '#818cf8', padding: '1px 7px', borderRadius: '10px' }}>
-                    {notifications.length}
-                  </span>
-                )}
-              </div>
-              <span style={{ fontSize: '0.72rem', color: connected ? '#10b981' : '#ef4444', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                <span style={{ width: 6, height: 6, borderRadius: '50%', background: connected ? '#10b981' : '#ef4444' }} />
-                {connected ? 'Live' : 'Offline'}
-              </span>
-            </div>
-
-            <div style={{ flex: 1, overflowY: 'auto', maxHeight: '360px' }}>
-              {notifications.length === 0 ? (
-                <div
+            <span style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+              <span className="nav-icon">🔔</span>
+              <span>Notifications</span>
+            </span>
+            <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <span
+                title={connected ? 'Socket.IO Live' : 'Disconnected'}
+                style={{
+                  width: '8px',
+                  height: '8px',
+                  borderRadius: '50%',
+                  background: connected ? 'var(--color-success)' : 'var(--color-danger)',
+                  flexShrink: 0,
+                  boxShadow: connected ? '0 0 8px rgba(16,185,129,0.6)' : 'none',
+                }}
+              />
+              {unreadCount > 0 && (
+                <span
                   style={{
-                    padding: '2.5rem 1rem',
+                    background: 'var(--color-danger)',
+                    color: '#fff',
+                    borderRadius: '10px',
+                    fontSize: '0.7rem',
+                    padding: '1px 6px',
+                    fontWeight: 700,
+                    minWidth: '18px',
                     textAlign: 'center',
-                    color: 'rgba(255,255,255,0.4)',
-                    fontSize: '0.85rem',
                   }}
                 >
-                  <div style={{ fontSize: '2rem', marginBottom: '0.5rem', opacity: 0.5 }}>🔕</div>
-                  No notifications right now.<br />
-                  <span style={{ fontSize: '0.75rem' }}>Real-time events will appear here live.</span>
+                  {unreadCount > 9 ? '9+' : unreadCount}
+                </span>
+              )}
+            </span>
+          </button>
+
+          {showNotifs && (
+            <div
+              className="sidebar-notif-flyout"
+              style={{
+                position: 'fixed',
+                left: 'calc(var(--sidebar-width, 260px) + 8px)',
+                bottom: '80px',
+                width: '340px',
+                maxHeight: '440px',
+                display: 'flex',
+                flexDirection: 'column',
+                background: '#1e1e2d',
+                border: '1px solid var(--border-color, rgba(255,255,255,0.12))',
+                borderRadius: '14px',
+                boxShadow: '0 16px 48px rgba(0,0,0,0.6)',
+                zIndex: 99999,
+                backdropFilter: 'blur(16px)',
+                overflow: 'hidden',
+              }}
+            >
+              <div
+                style={{
+                  padding: '0.85rem 1rem',
+                  borderBottom: '1px solid var(--border-color, rgba(255,255,255,0.08))',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  background: 'rgba(255,255,255,0.03)',
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 700, fontSize: '0.9rem', color: '#fff' }}>
+                  <span>🔔</span> Notifications
+                  {notifications.length > 0 && (
+                    <span style={{ fontSize: '0.75rem', background: 'rgba(99,102,241,0.2)', color: '#818cf8', padding: '1px 7px', borderRadius: '10px' }}>
+                      {notifications.length}
+                    </span>
+                  )}
                 </div>
-              ) : (
-                notifications.map((n) => (
+                <span style={{ fontSize: '0.72rem', color: connected ? '#10b981' : '#ef4444', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                  <span style={{ width: 6, height: 6, borderRadius: '50%', background: connected ? '#10b981' : '#ef4444' }} />
+                  {connected ? 'Live' : 'Offline'}
+                </span>
+              </div>
+
+              <div style={{ flex: 1, overflowY: 'auto', maxHeight: '360px' }}>
+                {notifications.length === 0 ? (
                   <div
-                    key={n.id}
                     style={{
-                      padding: '0.8rem 1rem',
-                      borderBottom: '1px solid rgba(255,255,255,0.05)',
-                      fontSize: '0.82rem',
-                      lineHeight: 1.4,
-                      background: n.read ? 'transparent' : 'rgba(99,102,241,0.08)',
-                      transition: 'background 0.2s',
+                      padding: '2.5rem 1rem',
+                      textAlign: 'center',
+                      color: 'rgba(255,255,255,0.4)',
+                      fontSize: '0.85rem',
                     }}
                   >
-                    <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'flex-start' }}>
-                      <span style={{ fontSize: '1.1rem', marginTop: '1px' }}>{n.icon || '🔔'}</span>
-                      <div style={{ flex: 1 }}>
-                        <div style={{ fontWeight: 700, color: '#f3f4f6', marginBottom: '0.15rem' }}>
-                          {n.title}
+                    <div style={{ fontSize: '2rem', marginBottom: '0.5rem', opacity: 0.5 }}>🔕</div>
+                    No notifications right now.<br />
+                    <span style={{ fontSize: '0.75rem' }}>Real-time events will appear here live.</span>
+                  </div>
+                ) : (
+                  notifications.map((n) => (
+                    <div
+                      key={n.id}
+                      style={{
+                        padding: '0.8rem 1rem',
+                        borderBottom: '1px solid rgba(255,255,255,0.05)',
+                        fontSize: '0.82rem',
+                        lineHeight: 1.4,
+                        background: n.read ? 'transparent' : 'rgba(99,102,241,0.08)',
+                        transition: 'background 0.2s',
+                      }}
+                    >
+                      <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'flex-start' }}>
+                        <span style={{ fontSize: '1.1rem', marginTop: '1px' }}>{n.icon || '🔔'}</span>
+                        <div style={{ flex: 1 }}>
+                          <div style={{ fontWeight: 700, color: '#f3f4f6', marginBottom: '0.15rem' }}>
+                            {n.title}
+                          </div>
+                          <div style={{ color: 'rgba(255,255,255,0.7)', fontSize: '0.8rem' }}>{n.message}</div>
                         </div>
-                        <div style={{ color: 'rgba(255,255,255,0.7)', fontSize: '0.8rem' }}>{n.message}</div>
                       </div>
                     </div>
-                  </div>
-                ))
-              )}
+                  ))
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Sidebar Footer */}
+        <div className="sidebar-footer">
+          <div
+            className="sidebar-user"
+            onClick={() => { if (onClose) onClose(); navigate('/profile'); }}
+            style={{ cursor: 'pointer' }}
+            title="View Profile"
+          >
+            {user?.avatarUrl ? (
+              <img
+                src={user.avatarUrl}
+                alt={user?.name || 'User'}
+                style={{ width: '36px', height: '36px', borderRadius: '50%', objectFit: 'cover' }}
+              />
+            ) : (
+              <div className="sidebar-avatar">{initials}</div>
+            )}
+            <div className="sidebar-user-info">
+              <div className="sidebar-user-name">{user?.name || 'User'}</div>
+              <div className="sidebar-user-role">{role}</div>
             </div>
           </div>
-        )}
-      </div>
-
-      {/* User & Logout */}
-      <div className="sidebar-footer">
-        <div className="sidebar-user">
-          <div className="sidebar-avatar">{initials}</div>
-          <div className="sidebar-user-info">
-            <div className="sidebar-user-name">{user?.name || 'User'}</div>
-            <div className="sidebar-user-role">{role}</div>
-          </div>
+          <button
+            onClick={handleLogout}
+            className="sidebar-nav-item"
+            style={{
+              width: '100%',
+              marginTop: '0.5rem',
+              background: 'none',
+              border: 'none',
+              color: 'var(--color-danger)',
+              cursor: 'pointer',
+            }}
+            aria-label="Logout"
+          >
+            <span className="nav-icon">🚪</span>
+            <span>Logout</span>
+          </button>
         </div>
-        <button
-          onClick={handleLogout}
-          className="sidebar-nav-item"
-          style={{ width: '100%', marginTop: '0.5rem', background: 'none', border: 'none', color: 'var(--color-danger)', cursor: 'pointer' }}
-          aria-label="Logout"
-        >
-          <span className="nav-icon">🚪</span>
-          <span>Logout</span>
-        </button>
-      </div>
-    </aside>
-  </>
-);
+      </aside>
+    </>
+  );
 };
 
 export default Sidebar;

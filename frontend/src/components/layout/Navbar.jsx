@@ -1,5 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
+import { useLogoutUserMutation } from '../../features/auth/authApi';
 import { useSocket } from '../../context/SocketContext';
 import { formatDate } from '../../utils/formatters';
 import '../../styles/components.css';
@@ -8,7 +10,7 @@ const PAGE_TITLES = {
   '/employee/dashboard': 'Dashboard',
   '/employee/attendance': 'My Attendance',
   '/employee/overtime': 'Overtime Requests',
-  '/manager/dashboard': 'Dashboard',
+  '/manager/dashboard': 'Manager Dashboard',
   '/manager/team-attendance': 'Team Attendance',
   '/manager/validation': 'Attendance Validation',
   '/manager/overtime': 'Overtime Approval',
@@ -17,36 +19,80 @@ const PAGE_TITLES = {
   '/admin/validation': 'Validation',
   '/admin/overtime': 'Overtime Management',
   '/admin/users': 'User Management',
+  '/admin/settings': 'Geofence Settings',
   '/reports': 'Reports',
+  '/profile': 'My Profile',
+  '/profile/edit': 'Edit Profile',
 };
 
 const Navbar = ({ onToggleSidebar, isSidebarOpen }) => {
-  const { user } = useAuth();
+  const { user, role, isAdmin } = useAuth();
+  const navigate = useNavigate();
+  const [logoutUser] = useLogoutUserMutation();
   const { notifications, unreadCount, markAllRead, connected } = useSocket();
+
   const [showNotifs, setShowNotifs] = useState(false);
+  const [showProfileMenu, setShowProfileMenu] = useState(false);
+
   const notifRef = useRef(null);
+  const profileRef = useRef(null);
 
   const path = window.location.pathname;
   const title = PAGE_TITLES[path] || 'Attendance System';
 
-  // Close dropdown on outside click
+  // Handle outside click & escape key
   useEffect(() => {
-    const handleClick = (e) => {
+    const handleMousedown = (e) => {
       if (notifRef.current && !notifRef.current.contains(e.target)) {
         setShowNotifs(false);
       }
+      if (profileRef.current && !profileRef.current.contains(e.target)) {
+        setShowProfileMenu(false);
+      }
     };
-    document.addEventListener('mousedown', handleClick);
-    return () => document.removeEventListener('mousedown', handleClick);
+
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        setShowNotifs(false);
+        setShowProfileMenu(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleMousedown);
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('mousedown', handleMousedown);
+      window.removeEventListener('keydown', handleKeyDown);
+    };
   }, []);
 
-  const handleToggle = () => {
+  const handleLogout = async () => {
+    setShowProfileMenu(false);
+    try {
+      await logoutUser().unwrap();
+    } catch {
+      // ignore
+    }
+    navigate('/login', { replace: true });
+  };
+
+  const toggleNotifs = () => {
+    setShowProfileMenu(false);
     if (!showNotifs) markAllRead();
     setShowNotifs((prev) => !prev);
   };
 
+  const toggleProfileMenu = () => {
+    setShowNotifs(false);
+    setShowProfileMenu((prev) => !prev);
+  };
+
+  const initials = user?.name
+    ? user.name.split(' ').map((n) => n[0]).slice(0, 2).join('').toUpperCase()
+    : 'U';
+
   return (
-    <header className="navbar" style={{ position: 'relative' }}>
+    <header className="navbar">
       <div className="navbar-left">
         {onToggleSidebar && (
           <button
@@ -65,15 +111,13 @@ const Navbar = ({ onToggleSidebar, isSidebarOpen }) => {
         </div>
       </div>
 
-      <div className="navbar-right" style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
-        <span className="navbar-tz" style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-          🌐 IST
-        </span>
+      <div className="navbar-right">
+        <span className="navbar-tz">🌐 IST</span>
 
-        {/* Top Header Notification Button */}
+        {/* Notification Button & Flyout */}
         <div ref={notifRef} style={{ position: 'relative' }}>
           <button
-            onClick={handleToggle}
+            onClick={toggleNotifs}
             style={{
               position: 'relative',
               background: showNotifs ? 'rgba(99,102,241,0.2)' : 'rgba(255,255,255,0.06)',
@@ -88,7 +132,7 @@ const Navbar = ({ onToggleSidebar, isSidebarOpen }) => {
               transition: 'all 0.2s ease',
             }}
             title="Notifications"
-            aria-label="Notifications"
+            aria-label="Open notifications"
           >
             <span style={{ fontSize: '1rem' }}>🔔</span>
             <span
@@ -119,7 +163,6 @@ const Navbar = ({ onToggleSidebar, isSidebarOpen }) => {
             )}
           </button>
 
-          {/* Header Dropdown Menu */}
           {showNotifs && (
             <div
               style={{
@@ -203,6 +246,191 @@ const Navbar = ({ onToggleSidebar, isSidebarOpen }) => {
                   ))
                 )}
               </div>
+            </div>
+          )}
+        </div>
+
+        {/* User Profile Area & Dropdown */}
+        <div ref={profileRef} style={{ position: 'relative' }}>
+          <button
+            onClick={toggleProfileMenu}
+            style={{
+              background: showProfileMenu ? 'rgba(99,102,241,0.2)' : 'rgba(255,255,255,0.06)',
+              border: '1px solid var(--border-color, rgba(255,255,255,0.12))',
+              borderRadius: '12px',
+              padding: '0.35rem 0.75rem',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.65rem',
+              color: 'var(--text-primary)',
+              transition: 'all 0.2s ease',
+            }}
+            aria-label="Open profile menu"
+            id="btn-header-profile"
+          >
+            {user?.avatarUrl ? (
+              <img
+                src={user.avatarUrl}
+                alt={user?.name || 'User'}
+                style={{
+                  width: '32px',
+                  height: '32px',
+                  borderRadius: '50%',
+                  objectFit: 'cover',
+                  border: '1px solid var(--border-primary)',
+                }}
+              />
+            ) : (
+              <div
+                style={{
+                  width: '32px',
+                  height: '32px',
+                  borderRadius: '50%',
+                  background: 'var(--gradient-primary)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontWeight: 700,
+                  fontSize: '0.8rem',
+                  color: '#fff',
+                }}
+              >
+                {initials}
+              </div>
+            )}
+            <div style={{ display: 'flex', flexDirection: 'column', textAlign: 'left' }} className="header-user-text">
+              <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-primary)', lineHeight: 1.2 }}>
+                {user?.name || 'User'}
+              </span>
+              <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'capitalize' }}>
+                {role || 'employee'}
+              </span>
+            </div>
+            <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginLeft: '2px' }}>
+              {showProfileMenu ? '▲' : '▼'}
+            </span>
+          </button>
+
+          {/* Profile Dropdown */}
+          {showProfileMenu && (
+            <div
+              style={{
+                position: 'absolute',
+                right: 0,
+                top: 'calc(100% + 10px)',
+                width: '260px',
+                background: '#1e1e2d',
+                border: '1px solid var(--border-color, rgba(255,255,255,0.12))',
+                borderRadius: '14px',
+                boxShadow: '0 16px 48px rgba(0,0,0,0.6)',
+                zIndex: 99999,
+                backdropFilter: 'blur(16px)',
+                overflow: 'hidden',
+                padding: '0.5rem',
+              }}
+            >
+              {/* Profile Summary Header */}
+              <div
+                style={{
+                  padding: '0.75rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.75rem',
+                  borderBottom: '1px solid rgba(255,255,255,0.08)',
+                  marginBottom: '0.35rem',
+                }}
+              >
+                {user?.avatarUrl ? (
+                  <img
+                    src={user.avatarUrl}
+                    alt={user.name}
+                    style={{
+                      width: '42px',
+                      height: '42px',
+                      borderRadius: '50%',
+                      objectFit: 'cover',
+                      border: '2px solid var(--color-primary)',
+                    }}
+                  />
+                ) : (
+                  <div
+                    style={{
+                      width: '42px',
+                      height: '42px',
+                      borderRadius: '50%',
+                      background: 'var(--gradient-primary)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontWeight: 700,
+                      fontSize: '1rem',
+                      color: '#fff',
+                    }}
+                  >
+                    {initials}
+                  </div>
+                )}
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontWeight: 700, fontSize: '0.9rem', color: '#fff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {user?.name || 'User'}
+                  </div>
+                  <div style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.6)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {user?.email || ''}
+                  </div>
+                  <span
+                    className={`badge badge-${role}`}
+                    style={{ fontSize: '0.65rem', padding: '1px 6px', marginTop: '4px', display: 'inline-block' }}
+                  >
+                    {role}
+                  </span>
+                </div>
+              </div>
+
+              {/* Menu Items */}
+              <button
+                onClick={() => { setShowProfileMenu(false); navigate('/profile'); }}
+                className="sidebar-nav-item"
+                style={{ width: '100%', background: 'none', border: 'none', padding: '0.55rem 0.75rem' }}
+                id="menu-item-my-profile"
+              >
+                <span className="nav-icon">👤</span>
+                <span>My Profile</span>
+              </button>
+
+              <button
+                onClick={() => { setShowProfileMenu(false); navigate('/profile/edit'); }}
+                className="sidebar-nav-item"
+                style={{ width: '100%', background: 'none', border: 'none', padding: '0.55rem 0.75rem' }}
+                id="menu-item-edit-profile"
+              >
+                <span className="nav-icon">✏️</span>
+                <span>Edit Profile</span>
+              </button>
+
+              {isAdmin && (
+                <button
+                  onClick={() => { setShowProfileMenu(false); navigate('/admin/settings'); }}
+                  className="sidebar-nav-item"
+                  style={{ width: '100%', background: 'none', border: 'none', padding: '0.55rem 0.75rem' }}
+                  id="menu-item-geofence"
+                >
+                  <span className="nav-icon">⚙️</span>
+                  <span>Geofence Settings</span>
+                </button>
+              )}
+
+              <div style={{ height: '1px', background: 'rgba(255,255,255,0.08)', margin: '0.35rem 0' }} />
+
+              <button
+                onClick={handleLogout}
+                className="sidebar-nav-item"
+                style={{ width: '100%', background: 'none', border: 'none', padding: '0.55rem 0.75rem', color: 'var(--color-danger)' }}
+                id="menu-item-logout"
+              >
+                <span className="nav-icon">🚪</span>
+                <span>Logout</span>
+              </button>
             </div>
           )}
         </div>

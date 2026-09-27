@@ -10,8 +10,16 @@ export const usersApi = createApi({
       return headers;
     },
   }),
-  tagTypes: ['Users'],
+  tagTypes: ['Users', 'UserProfile'],
   endpoints: (builder) => ({
+    getMyProfile: builder.query({
+      query: () => '/me',
+      providesTags: ['UserProfile'],
+    }),
+    updateMyProfile: builder.mutation({
+      query: (body) => ({ url: '/me', method: 'PUT', body }),
+      invalidatesTags: ['UserProfile', 'Users'],
+    }),
     getAllUsers: builder.query({
       query: (params) => ({ url: '/', params }),
       providesTags: ['Users'],
@@ -36,6 +44,8 @@ export const usersApi = createApi({
 });
 
 export const {
+  useGetMyProfileQuery,
+  useUpdateMyProfileMutation,
   useGetAllUsersQuery,
   useGetTeamUsersQuery,
   useGetUserByIdQuery,

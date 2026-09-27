@@ -60,9 +60,12 @@ const SignupPage = () => {
     <div className="auth-page">
       <div className="auth-card">
         {/* Logo */}
-        <div className="auth-logo">
-          <div className="auth-logo-icon">📍</div>
-          <h1>AttendPro</h1>
+        <div className="auth-logo" style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
+          <img
+            src="/logo.png"
+            alt="AttendPro Logo"
+            style={{ maxHeight: '70px', width: 'auto', objectFit: 'contain', marginBottom: '0.5rem' }}
+          />
           <p>Create your account</p>
         </div>
 

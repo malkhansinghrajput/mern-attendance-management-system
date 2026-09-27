@@ -28,6 +28,20 @@ const userSchema = new mongoose.Schema(
       enum: Object.values(ROLES),
       default: ROLES.EMPLOYEE,
     },
+    phone: {
+      type: String,
+      trim: true,
+      default: '',
+    },
+    avatarUrl: {
+      type: String,
+      default: '',
+    },
+    employeeId: {
+      type: String,
+      trim: true,
+      default: '',
+    },
     managerId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',

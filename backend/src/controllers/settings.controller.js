@@ -1,6 +1,6 @@
 const CompanySettings = require('../models/CompanySettings');
 const { isValidCoordinate } = require('../utils/geoUtils');
-const { successResponse, errorResponse } = require('../utils/response');
+const { sendSuccess, sendError } = require('../utils/response');
 const { ERROR_CODES } = require('../constants/errors');
 
 /**
@@ -10,7 +10,7 @@ const { ERROR_CODES } = require('../constants/errors');
 const getGeofenceSettings = async (req, res, next) => {
   try {
     const settings = await CompanySettings.getSettings();
-    return successResponse(res, { settings }, 'Geofence settings retrieved');
+    return sendSuccess(res, 200, 'Geofence settings retrieved', { settings });
   } catch (err) {
     next(err);
   }
@@ -30,20 +30,20 @@ const updateGeofenceSettings = async (req, res, next) => {
     const radNum = Number(radiusMeters);
 
     if (!isValidCoordinate(latNum, lonNum)) {
-      return errorResponse(
+      return sendError(
         res,
-        'Invalid latitude or longitude values',
         400,
-        ERROR_CODES.INVALID_LOCATION
+        ERROR_CODES.INVALID_LOCATION || 'INVALID_LOCATION',
+        'Invalid latitude or longitude values'
       );
     }
 
     if (isNaN(radNum) || radNum < 10 || radNum > 50000) {
-      return errorResponse(
+      return sendError(
         res,
-        'Allowed radius must be between 10m and 50,000m',
         400,
-        ERROR_CODES.VALIDATION_ERROR
+        ERROR_CODES.VALIDATION_ERROR,
+        'Allowed radius must be between 10m and 50,000m'
       );
     }
 
@@ -60,7 +60,7 @@ const updateGeofenceSettings = async (req, res, next) => {
 
     await settings.save();
 
-    return successResponse(res, { settings }, 'Geofence settings updated successfully');
+    return sendSuccess(res, 200, 'Geofence settings updated successfully', { settings });
   } catch (err) {
     next(err);
   }

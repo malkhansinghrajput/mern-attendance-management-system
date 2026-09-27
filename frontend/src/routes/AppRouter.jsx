@@ -31,6 +31,9 @@ import AdminValidation from '../pages/admin/AdminValidation';
 import AdminOvertime from '../pages/admin/AdminOvertime';
 import AdminSettingsPage from '../pages/admin/AdminSettingsPage';
 
+import ProfilePage from '../pages/shared/ProfilePage';
+import EditProfilePage from '../pages/shared/EditProfilePage';
+
 /**
  * RootRedirect — sends authenticated users to their role's home page.
  */
@@ -59,6 +62,22 @@ const AppRouter = () => {
           element={
             <ProtectedRoute>
               <ReportsPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/profile"
+          element={
+            <ProtectedRoute>
+              <ProfilePage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/profile/edit"
+          element={
+            <ProtectedRoute>
+              <EditProfilePage />
             </ProtectedRoute>
           }
         />

@@ -93,31 +93,60 @@ const MyOvertime = () => {
               action={<Button variant="primary" onClick={() => setShowModal(true)}>Request Overtime</Button>}
             />
           ) : (
-            <div className="table-wrapper">
-              <table className="table">
-                <thead>
-                  <tr>
-                    <th>Date</th>
-                    <th>Requested Hours</th>
-                    <th>Reason</th>
-                    <th>Status</th>
-                    <th>Reviewed By</th>
-                    <th>Remarks</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {requests.map((ot) => (
-                    <tr key={ot._id}>
-                      <td style={{ fontWeight: 600 }}>{formatDate(ot.attendanceId?.date || ot.createdAt)}</td>
-                      <td><strong style={{ color: 'var(--text-primary)' }}>{ot.requestedHours}h</strong></td>
-                      <td style={{ maxWidth: '200px', fontSize: '0.85rem', color: 'var(--text-muted)' }}>{ot.reason}</td>
-                      <td><Badge status={ot.status} /></td>
-                      <td style={{ fontSize: '0.85rem' }}>{ot.reviewedBy?.name || '—'}</td>
-                      <td style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{ot.reviewRemarks || '—'}</td>
+            <>
+              {/* Desktop Table View */}
+              <div className="table-wrapper desktop-only">
+                <table className="table">
+                  <thead>
+                    <tr>
+                      <th>Date</th>
+                      <th>Requested Hours</th>
+                      <th>Reason</th>
+                      <th>Status</th>
+                      <th>Reviewed By</th>
+                      <th>Remarks</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {requests.map((ot) => (
+                      <tr key={ot._id}>
+                        <td style={{ fontWeight: 600 }}>{formatDate(ot.attendanceId?.date || ot.createdAt)}</td>
+                        <td><strong style={{ color: 'var(--text-primary)' }}>{ot.requestedHours}h</strong></td>
+                        <td style={{ maxWidth: '200px', fontSize: '0.85rem', color: 'var(--text-muted)' }}>{ot.reason}</td>
+                        <td><Badge status={ot.status} /></td>
+                        <td style={{ fontSize: '0.85rem' }}>{ot.reviewedBy?.name || '—'}</td>
+                        <td style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{ot.reviewRemarks || '—'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Mobile Cards View */}
+              <div className="mobile-only" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                {requests.map((ot) => (
+                  <div key={ot._id} className="card" style={{ padding: '1rem' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                      <strong style={{ fontSize: '0.95rem', color: 'var(--text-primary)' }}>
+                        {formatDate(ot.attendanceId?.date || ot.createdAt)}
+                      </strong>
+                      <Badge status={ot.status} />
+                    </div>
+                    <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '0.5rem' }}>
+                      ⚡ <strong>Requested:</strong> {ot.requestedHours}h
+                    </div>
+                    <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginBottom: '0.5rem', background: 'var(--bg-glass)', padding: '0.5rem', borderRadius: '6px' }}>
+                      💬 "{ot.reason}"
+                    </div>
+                    {ot.reviewedBy?.name && (
+                      <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+                        Reviewed by <strong>{ot.reviewedBy.name}</strong>
+                        {ot.reviewRemarks ? ` — "${ot.reviewRemarks}"` : ''}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
 
               {totalPages > 1 && (
                 <div className="pagination">
@@ -126,7 +155,7 @@ const MyOvertime = () => {
                   <Button variant="ghost" size="sm" disabled={page >= totalPages} onClick={() => setPage((p) => p + 1)} id="ot-next">Next →</Button>
                 </div>
               )}
-            </div>
+            </>
           )}
         </>
       )}

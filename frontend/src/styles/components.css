@@ -722,8 +722,15 @@
   }
 }
 
+/* Desktop / Mobile Visibility Helpers */
+.mobile-only { display: none !important; }
+.desktop-only { display: block; }
+
 /* Mobile (< 640px) */
 @media (max-width: 639px) {
+  .mobile-only { display: flex !important; }
+  .desktop-only { display: none !important; }
+  .header-user-text { display: none !important; }
   .navbar {
     padding: 0 0.85rem;
   }
