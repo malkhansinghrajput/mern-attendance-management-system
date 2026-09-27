@@ -100,17 +100,17 @@ const Sidebar = () => {
       <div className="sidebar-section" ref={notifRef} style={{ position: 'relative' }}>
         <button
           onClick={toggleNotifs}
-          className="sidebar-nav-item"
+          className={`sidebar-nav-item${showNotifs ? ' active' : ''}`}
           style={{
             width: '100%',
-            background: 'none',
+            background: showNotifs ? 'var(--bg-glass-hover)' : 'none',
             border: 'none',
             cursor: 'pointer',
             color: 'var(--text-secondary)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
-            padding: '0.6rem 1rem',
+            padding: '0.65rem 0.75rem',
           }}
           aria-label="Notifications"
         >
@@ -121,13 +121,14 @@ const Sidebar = () => {
           <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
             {/* Live connection indicator */}
             <span
-              title={connected ? 'Live (real-time active)' : 'Offline'}
+              title={connected ? 'Socket.IO Live' : 'Disconnected'}
               style={{
                 width: '8px',
                 height: '8px',
                 borderRadius: '50%',
                 background: connected ? 'var(--color-success)' : 'var(--color-danger)',
                 flexShrink: 0,
+                boxShadow: connected ? '0 0 8px rgba(16,185,129,0.6)' : 'none',
               }}
             />
             {unreadCount > 0 && (
@@ -149,74 +150,90 @@ const Sidebar = () => {
           </span>
         </button>
 
-        {/* Notification panel */}
+        {/* Notification panel fixed flyout */}
         {showNotifs && (
           <div
             style={{
-              position: 'absolute',
-              left: '100%',
-              top: 0,
-              marginLeft: '8px',
-              width: '320px',
-              maxHeight: '400px',
-              overflowY: 'auto',
-              background: 'var(--bg-card)',
-              border: '1px solid var(--border-color)',
-              borderRadius: '12px',
-              boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
-              zIndex: 1000,
+              position: 'fixed',
+              left: 'calc(var(--sidebar-width, 260px) + 8px)',
+              bottom: '80px',
+              width: '340px',
+              maxHeight: '440px',
+              display: 'flex',
+              flexDirection: 'column',
+              background: '#1e1e2d',
+              border: '1px solid var(--border-color, rgba(255,255,255,0.12))',
+              borderRadius: '14px',
+              boxShadow: '0 16px 48px rgba(0,0,0,0.6)',
+              zIndex: 99999,
+              backdropFilter: 'blur(16px)',
+              overflow: 'hidden',
             }}
           >
             <div
               style={{
-                padding: '0.75rem 1rem',
-                borderBottom: '1px solid var(--border-color)',
-                fontWeight: 700,
-                fontSize: '0.875rem',
-                color: 'var(--text-primary)',
+                padding: '0.85rem 1rem',
+                borderBottom: '1px solid var(--border-color, rgba(255,255,255,0.08))',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                background: 'rgba(255,255,255,0.03)',
               }}
             >
-              🔔 Notifications
-              {notifications.length > 0 && (
-                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginLeft: '0.5rem' }}>
-                  ({notifications.length})
-                </span>
-              )}
-            </div>
-            {notifications.length === 0 ? (
-              <div
-                style={{
-                  padding: '2rem',
-                  textAlign: 'center',
-                  color: 'var(--text-muted)',
-                  fontSize: '0.85rem',
-                }}
-              >
-                No notifications yet
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 700, fontSize: '0.9rem', color: '#fff' }}>
+                <span>🔔</span> Notifications
+                {notifications.length > 0 && (
+                  <span style={{ fontSize: '0.75rem', background: 'rgba(99,102,241,0.2)', color: '#818cf8', padding: '1px 7px', borderRadius: '10px' }}>
+                    {notifications.length}
+                  </span>
+                )}
               </div>
-            ) : (
-              notifications.slice(0, 20).map((n) => (
+              <span style={{ fontSize: '0.72rem', color: connected ? '#10b981' : '#ef4444', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                <span style={{ width: 6, height: 6, borderRadius: '50%', background: connected ? '#10b981' : '#ef4444' }} />
+                {connected ? 'Live' : 'Offline'}
+              </span>
+            </div>
+
+            <div style={{ flex: 1, overflowY: 'auto', maxHeight: '360px' }}>
+              {notifications.length === 0 ? (
                 <div
-                  key={n.id}
                   style={{
-                    padding: '0.75rem 1rem',
-                    borderBottom: '1px solid var(--border-color)',
-                    fontSize: '0.82rem',
-                    lineHeight: 1.4,
+                    padding: '2.5rem 1rem',
+                    textAlign: 'center',
+                    color: 'rgba(255,255,255,0.4)',
+                    fontSize: '0.85rem',
                   }}
                 >
-                  <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-start' }}>
-                    <span style={{ fontSize: '1rem' }}>{n.icon}</span>
-                    <div>
-                      <div style={{ fontWeight: 700, color: 'var(--text-primary)', marginBottom: '0.15rem' }}>
-                        {n.title}
+                  <div style={{ fontSize: '2rem', marginBottom: '0.5rem', opacity: 0.5 }}>🔕</div>
+                  No notifications right now.<br />
+                  <span style={{ fontSize: '0.75rem' }}>Real-time events will appear here live.</span>
+                </div>
+              ) : (
+                notifications.map((n) => (
+                  <div
+                    key={n.id}
+                    style={{
+                      padding: '0.8rem 1rem',
+                      borderBottom: '1px solid rgba(255,255,255,0.05)',
+                      fontSize: '0.82rem',
+                      lineHeight: 1.4,
+                      background: n.read ? 'transparent' : 'rgba(99,102,241,0.08)',
+                      transition: 'background 0.2s',
+                    }}
+                  >
+                    <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'flex-start' }}>
+                      <span style={{ fontSize: '1.1rem', marginTop: '1px' }}>{n.icon || '🔔'}</span>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontWeight: 700, color: '#f3f4f6', marginBottom: '0.15rem' }}>
+                          {n.title}
+                        </div>
+                        <div style={{ color: 'rgba(255,255,255,0.7)', fontSize: '0.8rem' }}>{n.message}</div>
                       </div>
-                      <div style={{ color: 'var(--text-muted)' }}>{n.message}</div>
                     </div>
                   </div>
-                </div>
-              ))
-            )}
+                ))
+              )}
+            </div>
           </div>
         )}
       </div>
