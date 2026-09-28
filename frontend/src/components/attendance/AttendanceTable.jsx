@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react';
 import Badge from '../common/Badge';
 import EmptyState from '../common/EmptyState';
 import { formatDate, formatTime, formatWorkingHours } from '../../utils/formatters';
@@ -14,12 +15,31 @@ const AttendanceTable = ({
   onValidate,
   onViewSelfie,
 }) => {
+  const tableRef = useRef(null);
+
+  useEffect(() => {
+    const el = tableRef.current;
+    if (!el) return;
+    const onWheel = (e) => {
+      if (el.scrollWidth > el.clientWidth && Math.abs(e.deltaY) > Math.abs(e.deltaX)) {
+        const atLeft = el.scrollLeft <= 0 && e.deltaY < 0;
+        const atRight = el.scrollLeft + el.clientWidth >= el.scrollWidth - 1 && e.deltaY > 0;
+        if (!atLeft && !atRight) {
+          e.preventDefault();
+          el.scrollLeft += e.deltaY;
+        }
+      }
+    };
+    el.addEventListener('wheel', onWheel, { passive: false });
+    return () => el.removeEventListener('wheel', onWheel);
+  }, []);
+
   if (!records.length) {
     return <EmptyState icon="📋" title="No attendance records" description="No records found for the selected filters." />;
   }
 
   return (
-    <div className="table-wrapper">
+    <div className="table-wrapper" ref={tableRef}>
       <table className="table">
         <thead>
           <tr>

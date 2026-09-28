@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import '../../styles/components.css';
 
 const Modal = ({ isOpen, onClose, title, children, footer, maxWidth = '520px' }) => {
@@ -18,7 +19,7 @@ const Modal = ({ isOpen, onClose, title, children, footer, maxWidth = '520px' })
     if (e.target === e.currentTarget) onClose();
   };
 
-  return (
+  const modalNode = (
     <div className="modal-overlay" onClick={handleOverlayClick} role="dialog" aria-modal="true">
       <div className="modal" style={{ maxWidth }} role="document">
         <div className="modal-header">
@@ -30,6 +31,8 @@ const Modal = ({ isOpen, onClose, title, children, footer, maxWidth = '520px' })
       </div>
     </div>
   );
+
+  return createPortal(modalNode, document.body);
 };
 
 export default Modal;

@@ -19,6 +19,7 @@ const { initSocket } = require('./socket/socketServer');
 const logger = require('./config/logger');
 
 const PORT = process.env.PORT || 5000;
+let httpServer;
 
 const startServer = async () => {
   try {
@@ -29,7 +30,17 @@ const startServer = async () => {
     connectCloudinary();
 
     // Create HTTP server from Express app
-    const httpServer = http.createServer(app);
+    httpServer = http.createServer(app);
+
+    // Handle server socket errors (e.g. EADDRINUSE)
+    httpServer.on('error', (error) => {
+      if (error.code === 'EADDRINUSE') {
+        logger.error(`Port ${PORT} is already in use. Clean up the process or retry.`);
+      } else {
+        logger.error(`Server error: ${error.message}`);
+      }
+      process.exit(1);
+    });
 
     // Initialize Socket.IO — must attach to httpServer, not app directly
     initSocket(httpServer);
@@ -45,6 +56,30 @@ const startServer = async () => {
     process.exit(1);
   }
 };
+
+const gracefulShutdown = (signal) => {
+  logger.info(`Received ${signal}. Shutting down HTTP server cleanly...`);
+  if (httpServer) {
+    httpServer.close(() => {
+      logger.info('HTTP server closed.');
+      process.exit(0);
+    });
+  } else {
+    process.exit(0);
+  }
+};
+
+process.once('SIGTERM', () => gracefulShutdown('SIGTERM'));
+process.once('SIGINT', () => gracefulShutdown('SIGINT'));
+process.once('SIGUSR2', () => {
+  if (httpServer) {
+    httpServer.close(() => {
+      process.kill(process.pid, 'SIGUSR2');
+    });
+  } else {
+    process.kill(process.pid, 'SIGUSR2');
+  }
+});
 
 // Handle unhandled promise rejections
 process.on('unhandledRejection', (reason) => {

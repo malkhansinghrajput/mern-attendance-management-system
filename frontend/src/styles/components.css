@@ -476,15 +476,20 @@ html[data-theme="light"] .sidebar-logo-img {
 .modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.65);
-  backdrop-filter: blur(4px);
-  -webkit-backdrop-filter: blur(4px);
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 1000;
-  padding: 1rem;
+  z-index: 9999;
+  padding: 1.5rem 1rem;
+  overflow-y: auto;
   animation: fadeIn 0.2s ease;
+}
+
+html[data-theme="light"] .modal-overlay {
+  background: rgba(15, 23, 42, 0.5);
 }
 
 .modal {
@@ -493,24 +498,31 @@ html[data-theme="light"] .sidebar-logo-img {
   border-radius: var(--radius-xl);
   width: 100%;
   max-width: 520px;
-  max-height: 90vh;
-  overflow-y: auto;
+  max-height: min(90vh, 720px);
+  margin: auto;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
   box-shadow: var(--shadow-lg);
   animation: fadeIn 0.25s ease;
+  flex-shrink: 0;
 }
 
 .modal-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 1.5rem 1.5rem 1rem;
+  padding: 1.25rem 1.5rem 1rem;
   border-bottom: 1px solid var(--border-subtle);
+  flex-shrink: 0;
+  background: var(--bg-elevated);
 }
 
 .modal-title {
   font-size: 1.1rem;
   font-weight: 700;
   color: var(--text-primary);
+  margin: 0;
 }
 
 .modal-close {
@@ -521,21 +533,34 @@ html[data-theme="light"] .sidebar-logo-img {
   font-size: 1.2rem;
   padding: 0.25rem;
   border-radius: var(--radius-sm);
-  transition: color var(--transition-fast);
-  display: flex; align-items: center; justify-content: center;
-  width: 28px; height: 28px;
+  transition: color var(--transition-fast), background var(--transition-fast);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
 }
 
-.modal-close:hover { color: var(--text-primary); background: var(--bg-glass-hover); }
+.modal-close:hover {
+  color: var(--text-primary);
+  background: var(--bg-glass-hover);
+}
 
-.modal-body { padding: 1.5rem; }
+.modal-body {
+  padding: 1.25rem 1.5rem;
+  overflow-y: auto;
+  flex: 1 1 auto;
+}
 
 .modal-footer {
   display: flex;
   justify-content: flex-end;
   gap: 0.75rem;
-  padding: 1rem 1.5rem 1.5rem;
+  padding: 1rem 1.5rem 1.25rem;
   border-top: 1px solid var(--border-subtle);
+  flex-shrink: 0;
+  background: var(--bg-elevated);
 }
 
 /* ─── Selfie Modal Image ─────────────────────────────────── */
@@ -699,6 +724,8 @@ html[data-theme="light"] .sidebar-logo-img {
   display: flex;
   align-items: center;
   gap: 0.65rem;
+  white-space: nowrap;
+  min-width: 180px;
 }
 
 .name-cell-info .name { font-weight: 600; color: var(--text-primary); font-size: 0.875rem; }

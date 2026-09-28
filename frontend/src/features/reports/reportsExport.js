@@ -88,7 +88,14 @@ export const downloadAttendanceReport = async ({ format = 'pdf', ...filters }) =
   }
 
   const blob = await response.blob();
-  const dateStr = filters.date || new Date().toISOString().slice(0, 10);
+  const dateStr =
+    filters.startDate && filters.endDate
+      ? `${filters.startDate}_to_${filters.endDate}`
+      : filters.startDate
+      ? `from_${filters.startDate}`
+      : filters.endDate
+      ? `until_${filters.endDate}`
+      : filters.date || new Date().toISOString().slice(0, 10);
   const ext = format === 'pdf' ? 'pdf' : 'xlsx';
   const defaultFilename = `AttendPro_Attendance_Report_${dateStr}.${ext}`;
   const filename = getFilenameFromResponse(response, defaultFilename);

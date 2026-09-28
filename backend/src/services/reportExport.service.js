@@ -23,7 +23,13 @@ const getAttendanceExportData = async (requesterId, requesterRole, filters = {},
 
   // Date or Date Range
   if (startDate && endDate) {
-    query.date = { $gte: startDate, $lte: endDate };
+    const s = startDate <= endDate ? startDate : endDate;
+    const e = startDate <= endDate ? endDate : startDate;
+    query.date = { $gte: s, $lte: e };
+  } else if (startDate) {
+    query.date = { $gte: startDate };
+  } else if (endDate) {
+    query.date = { $lte: endDate };
   } else {
     query.date = reportDate;
   }
@@ -149,10 +155,26 @@ const getAttendanceExportData = async (requesterId, requesterRole, filters = {},
     };
   });
 
-  const displayDate =
-    startDate && endDate ? `${formatDateDDMMYYYY(startDate)} to ${formatDateDDMMYYYY(endDate)}` : formatDateDDMMYYYY(reportDate);
+  const normStart = startDate && endDate ? (startDate <= endDate ? startDate : endDate) : startDate;
+  const normEnd = startDate && endDate ? (startDate <= endDate ? endDate : startDate) : endDate;
 
-  const rawDate = startDate && endDate ? `${startDate}_to_${endDate}` : reportDate;
+  const displayDate =
+    normStart && normEnd
+      ? `${formatDateDDMMYYYY(normStart)} to ${formatDateDDMMYYYY(normEnd)}`
+      : normStart
+      ? `From ${formatDateDDMMYYYY(normStart)}`
+      : normEnd
+      ? `Until ${formatDateDDMMYYYY(normEnd)}`
+      : formatDateDDMMYYYY(reportDate);
+
+  const rawDate =
+    normStart && normEnd
+      ? `${normStart}_to_${normEnd}`
+      : normStart
+      ? `from_${normStart}`
+      : normEnd
+      ? `until_${normEnd}`
+      : reportDate;
 
   const requesterName = requesterUser?.name || 'System User';
   const requesterRoleFormatted = requesterRole ? requesterRole.toUpperCase() : 'USER';
