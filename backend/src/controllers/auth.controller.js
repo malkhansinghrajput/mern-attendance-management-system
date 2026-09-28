@@ -3,10 +3,10 @@ const { sendSuccess } = require('../utils/response');
 
 const signup = async (req, res, next) => {
   try {
-    const { name, email, password, role, managerId } = req.body;
+    const { name, email, password, role, managerId, managerCode } = req.body;
     // If an admin is making this request (authenticated), pass their role so service can allow role assignment
     const createdByRole = req.user?.role || null;
-    const { user, token } = await authService.signup({ name, email, password, role, managerId, createdByRole });
+    const { user, token } = await authService.signup({ name, email, password, role, managerId, managerCode, createdByRole });
     return sendSuccess(res, 201, 'Account created successfully', { user, token });
   } catch (error) {
     next(error);

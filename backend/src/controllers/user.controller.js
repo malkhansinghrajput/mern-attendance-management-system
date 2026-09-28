@@ -1,5 +1,6 @@
 const User = require('../models/User');
 const authService = require('../services/auth.service');
+const { generateManagerCode } = require('../utils/managerCode');
 const { sendSuccess, sendError } = require('../utils/response');
 const { ERROR_CODES } = require('../constants/errors');
 
@@ -70,16 +71,53 @@ const createUser = async (req, res, next) => {
 
 const updateUserStatus = async (req, res, next) => {
   try {
-    const { isActive } = req.body;
+    const { isActive, role } = req.body;
+    const updates = {};
+    if (isActive !== undefined) updates.isActive = isActive;
+
+    // If admin is promoting a user to manager, generate a managerCode if they don't already have one
+    if (role) {
+      updates.role = role;
+      if (role === 'manager') {
+        const existing = await User.findById(req.params.id);
+        if (existing && !existing.managerCode) {
+          updates.managerCode = await generateManagerCode(existing.name);
+        }
+      }
+    }
+
     const user = await User.findByIdAndUpdate(
       req.params.id,
-      { isActive },
+      updates,
       { new: true, runValidators: true }
     );
     if (!user) {
       return sendError(res, 404, ERROR_CODES.USER_NOT_FOUND, 'User not found');
     }
-    return sendSuccess(res, 200, `User ${isActive ? 'activated' : 'deactivated'}`, { user });
+    const action = isActive !== undefined ? (isActive ? 'activated' : 'deactivated') : 'updated';
+    return sendSuccess(res, 200, `User ${action}`, { user });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Look up a manager by their managerCode.
+ * Used on the signup page to verify a code before form submission.
+ */
+const getManagerByCode = async (req, res, next) => {
+  try {
+    const { code } = req.params;
+    const manager = await User.findOne({
+      managerCode: code.trim().toUpperCase(),
+      role: 'manager',
+      isActive: true,
+    }).select('name email managerCode');
+
+    if (!manager) {
+      return sendError(res, 404, ERROR_CODES.USER_NOT_FOUND, 'No active manager found with this code');
+    }
+    return sendSuccess(res, 200, 'Manager found', { manager });
   } catch (error) {
     next(error);
   }
@@ -125,4 +163,5 @@ module.exports = {
   updateUserStatus,
   getMyProfile,
   updateMyProfile,
+  getManagerByCode,
 };

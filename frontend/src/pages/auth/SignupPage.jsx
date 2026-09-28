@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { useSignupMutation } from '../../features/auth/authApi';
@@ -11,9 +11,12 @@ const SignupPage = () => {
   const navigate = useNavigate();
   const [signup, { isLoading }] = useSignupMutation();
   const [form, setForm] = useState({
-    name: '', email: '', password: '', confirmPassword: '', managerId: '',
+    name: '', email: '', password: '', confirmPassword: '', managerCode: '',
   });
   const [errors, setErrors] = useState({});
+  const [managerInfo, setManagerInfo] = useState(null); // { name, email } of verified manager
+  const [verifyingCode, setVerifyingCode] = useState(false);
+  const codeVerifyTimer = useRef(null);
 
   const validate = () => {
     const e = {};
@@ -39,7 +42,7 @@ const SignupPage = () => {
       password: form.password,
       // role is always 'employee' — handled server-side
     };
-    if (form.managerId.trim()) payload.managerId = form.managerId.trim();
+    if (form.managerCode.trim()) payload.managerCode = form.managerCode.trim().toUpperCase();
 
     try {
       await signup(payload).unwrap();
@@ -55,6 +58,43 @@ const SignupPage = () => {
     setForm((f) => ({ ...f, [e.target.name]: e.target.value }));
     if (errors[e.target.name]) setErrors((er) => ({ ...er, [e.target.name]: '' }));
   };
+
+  // Live-verify the manager code with a 600ms debounce
+  const handleManagerCodeChange = useCallback((e) => {
+    const val = e.target.value.trim().toUpperCase();
+    setForm((f) => ({ ...f, managerCode: val }));
+    setManagerInfo(null);
+    setErrors((er) => ({ ...er, managerCode: '' }));
+
+    if (codeVerifyTimer.current) clearTimeout(codeVerifyTimer.current);
+
+    if (!val) return;
+
+    // Basic format check before hitting API
+    if (!/^MGR-[A-Z0-9]+-\d{4}$/i.test(val)) {
+      setErrors((er) => ({ ...er, managerCode: 'Format: MGR-XXXXX-1234' }));
+      return;
+    }
+
+    codeVerifyTimer.current = setTimeout(async () => {
+      setVerifyingCode(true);
+      try {
+        const res = await fetch(`${import.meta.env.VITE_API_URL}/users/manager-code/${val}`);
+        const json = await res.json();
+        if (res.ok && json.data?.manager) {
+          setManagerInfo(json.data.manager);
+          setErrors((er) => ({ ...er, managerCode: '' }));
+        } else {
+          setManagerInfo(null);
+          setErrors((er) => ({ ...er, managerCode: 'Manager not found. Check the code.' }));
+        }
+      } catch {
+        setManagerInfo(null);
+      } finally {
+        setVerifyingCode(false);
+      }
+    }, 600);
+  }, []);
 
   return (
     <div className="auth-page">
@@ -126,20 +166,48 @@ const SignupPage = () => {
             <span>All new accounts are created as <strong>Employee</strong>. Your admin can update your role later.</span>
           </div>
 
+          {/* Manager Code field with live verification */}
           <div className="form-group">
-              <label className="form-label" htmlFor="managerId">
-                Manager ID <span style={{ color: 'var(--text-muted)' }}>(optional)</span>
-              </label>
+            <label className="form-label" htmlFor="managerCode">
+              Manager Code <span style={{ color: 'var(--text-muted)' }}>(optional)</span>
+            </label>
+            <div style={{ position: 'relative' }}>
               <input
-                id="managerId" name="managerId" type="text"
-                className="form-input"
-                placeholder="MongoDB ObjectId of your manager"
-                value={form.managerId} onChange={handleChange}
+                id="managerCode" name="managerCode" type="text"
+                className={`form-input${errors.managerCode ? ' error' : managerInfo ? '' : ''}`}
+                placeholder="MGR-ALEXM-3821"
+                value={form.managerCode}
+                onChange={handleManagerCodeChange}
+                style={{
+                  textTransform: 'uppercase',
+                  paddingRight: verifyingCode || managerInfo ? '2.5rem' : undefined,
+                  borderColor: managerInfo ? 'var(--color-success)' : errors.managerCode ? 'var(--color-danger)' : undefined,
+                }}
+                autoComplete="off"
               />
-              <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.35rem' }}>
-                Ask your admin for the Manager ID to link to your team.
-              </p>
+              {verifyingCode && (
+                <span style={{ position: 'absolute', right: '0.75rem', top: '50%', transform: 'translateY(-50%)', fontSize: '0.85rem', opacity: 0.6 }}>
+                  🔍
+                </span>
+              )}
+              {managerInfo && !verifyingCode && (
+                <span style={{ position: 'absolute', right: '0.75rem', top: '50%', transform: 'translateY(-50%)', fontSize: '0.85rem', color: 'var(--color-success)' }}>
+                  ✅
+                </span>
+              )}
             </div>
+            {errors.managerCode && <p className="form-error">{errors.managerCode}</p>}
+            {managerInfo && !errors.managerCode && (
+              <p style={{ fontSize: '0.78rem', color: 'var(--color-success)', marginTop: '0.35rem', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+                ✅ Manager: <strong>{managerInfo.name}</strong> ({managerInfo.email})
+              </p>
+            )}
+            {!managerInfo && !errors.managerCode && (
+              <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.35rem' }}>
+                Ask your manager for their Manager Code to join their team automatically.
+              </p>
+            )}
+          </div>
 
           <Button type="submit" fullWidth size="lg" loading={isLoading} id="btn-signup">
             Create Account →
@@ -158,3 +226,4 @@ const SignupPage = () => {
 };
 
 export default SignupPage;
+

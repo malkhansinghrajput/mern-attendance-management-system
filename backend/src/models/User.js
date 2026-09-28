@@ -47,6 +47,14 @@ const userSchema = new mongoose.Schema(
       ref: 'User',
       default: null,
     },
+    managerCode: {
+      type: String,
+      unique: true,
+      sparse: true, // only managers have this; null values are excluded from unique index
+      uppercase: true,
+      trim: true,
+      default: null,
+    },
     isActive: {
       type: Boolean,
       default: true,

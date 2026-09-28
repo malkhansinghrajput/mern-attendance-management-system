@@ -1,13 +1,19 @@
 const bcrypt = require('bcryptjs');
 const User = require('../models/User');
 const { signToken } = require('../utils/jwtUtils');
+const { generateManagerCode } = require('../utils/managerCode');
 const { ERROR_CODES } = require('../constants/errors');
 const logger = require('../config/logger');
 
 /**
  * Creates a new user account.
+ *
+ * Signup flow for employees:
+ *  - They can provide a `managerCode` (e.g. "MGR-ALEXM-3821") instead of raw managerId ObjectId.
+ *  - The service resolves the code to the actual manager's _id.
+ *  - If neither is provided, managerId stays null.
  */
-const signup = async ({ name, email, password, managerId, role: requestedRole, createdByRole }) => {
+const signup = async ({ name, email, password, managerId, managerCode: rawManagerCode, role: requestedRole, createdByRole }) => {
   // Check for existing user
   const existing = await User.findOne({ email });
   if (existing) {
@@ -28,16 +34,40 @@ const signup = async ({ name, email, password, managerId, role: requestedRole, c
     ? requestedRole
     : 'employee';
 
+  // Resolve manager: prefer managerCode lookup, fallback to raw managerId ObjectId
+  let resolvedManagerId = managerId || null;
+  if (rawManagerCode && rawManagerCode.trim()) {
+    const managerUser = await User.findOne({
+      managerCode: rawManagerCode.trim().toUpperCase(),
+      role: 'manager',
+      isActive: true,
+    });
+    if (!managerUser) {
+      const err = new Error('Invalid Manager Code. Please check the code and try again.');
+      err.status = 400;
+      err.code = ERROR_CODES.VALIDATION_ERROR;
+      throw err;
+    }
+    resolvedManagerId = managerUser._id;
+  }
+
+  // Auto-generate managerCode if this account is being created as a manager
+  let newManagerCode = null;
+  if (role === 'manager') {
+    newManagerCode = await generateManagerCode(name);
+  }
+
   const user = await User.create({
     name,
     email,
     passwordHash,
     role,
-    managerId: managerId || null,
+    managerId: resolvedManagerId,
+    managerCode: newManagerCode,
   });
 
   const token = signToken(user._id.toString(), user.role);
-  logger.info(`User signup: email=${email}, role=${user.role}`);
+  logger.info(`User signup: email=${email}, role=${user.role}${newManagerCode ? `, managerCode=${newManagerCode}` : ''}`);
 
   return { user, token };
 };
@@ -74,3 +104,4 @@ const login = async ({ email, password }) => {
 };
 
 module.exports = { signup, login };
+

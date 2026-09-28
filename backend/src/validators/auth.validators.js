@@ -16,10 +16,19 @@ const signupValidators = [
     .notEmpty().withMessage('Password is required')
     .isLength({ min: 6 }).withMessage('Password must be at least 6 characters'),
 
-  // managerId is optional — lets employee link to their manager on signup
+  // managerId is optional — raw ObjectId (admin-created flows)
   body('managerId')
     .optional({ nullable: true })
     .isMongoId().withMessage('managerId must be a valid ID'),
+
+  // managerCode is optional — human-readable code employees get from their manager
+  // Format: MGR-NAMEPART-NNNN
+  body('managerCode')
+    .optional({ nullable: true, checkFalsy: true })
+    .isString()
+    .trim()
+    .matches(/^MGR-[A-Z0-9]+-\d{4}$/i)
+    .withMessage('Manager Code must be in format MGR-XXXXX-1234'),
 ];
 
 const loginValidators = [

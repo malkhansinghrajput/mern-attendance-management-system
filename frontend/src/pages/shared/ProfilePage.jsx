@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import DashboardLayout from '../../components/layout/DashboardLayout';
 import Button from '../../components/common/Button';
@@ -9,12 +10,21 @@ import { formatDate, parseApiError } from '../../utils/formatters';
 const ProfilePage = () => {
   const navigate = useNavigate();
   const { data, isLoading, error } = useGetMyProfileQuery();
+  const [copied, setCopied] = useState(false);
 
   const user = data?.data?.user;
 
   const initials = user?.name
     ? user.name.split(' ').map((n) => n[0]).slice(0, 2).join('').toUpperCase()
     : 'U';
+
+  const copyManagerCode = () => {
+    if (!user?.managerCode) return;
+    navigator.clipboard.writeText(user.managerCode).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  };
 
   return (
     <DashboardLayout>
@@ -162,6 +172,59 @@ const ProfilePage = () => {
                 </div>
               </div>
             </div>
+
+            {/* Manager Code Card — shown only to managers */}
+            {user.role === 'manager' && (
+              <div className="card" style={{
+                padding: '1.5rem',
+                background: 'linear-gradient(135deg, rgba(99,102,241,0.08) 0%, rgba(139,92,246,0.08) 100%)',
+                border: '1px solid rgba(99,102,241,0.3)',
+              }}>
+                <h3 style={{ fontSize: '1.05rem', fontWeight: 700, marginBottom: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  🪪 Your Manager Code
+                </h3>
+                <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', marginBottom: '1rem' }}>
+                  Share this code with your team members so they can join your team when signing up.
+                </p>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+                  <div style={{
+                    fontFamily: 'monospace',
+                    fontSize: '1.4rem',
+                    fontWeight: 800,
+                    letterSpacing: '0.12em',
+                    color: 'var(--color-primary-light)',
+                    background: 'var(--bg-glass)',
+                    border: '1px dashed rgba(99,102,241,0.5)',
+                    borderRadius: '10px',
+                    padding: '0.6rem 1.25rem',
+                    userSelect: 'all',
+                  }}>
+                    {user.managerCode || '—'}
+                  </div>
+                  {user.managerCode && (
+                    <button
+                      onClick={copyManagerCode}
+                      id="btn-copy-manager-code"
+                      title="Copy Manager Code"
+                      style={{
+                        display: 'flex', alignItems: 'center', gap: '0.4rem',
+                        padding: '0.5rem 1rem', borderRadius: '8px', cursor: 'pointer',
+                        border: '1px solid var(--border-default)',
+                        background: copied ? 'rgba(16,185,129,0.15)' : 'var(--bg-glass)',
+                        color: copied ? 'var(--color-success)' : 'var(--text-primary)',
+                        fontWeight: 600, fontSize: '0.82rem',
+                        transition: 'all 0.2s ease',
+                      }}
+                    >
+                      {copied ? '✅ Copied!' : '📋 Copy'}
+                    </button>
+                  )}
+                </div>
+                <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.75rem' }}>
+                  💡 Employees enter this code in the <strong>Manager Code</strong> field on the signup page to be automatically added to your team.
+                </p>
+              </div>
+            )}
           </div>
         ) : null}
       </div>
@@ -170,3 +233,4 @@ const ProfilePage = () => {
 };
 
 export default ProfilePage;
+
