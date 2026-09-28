@@ -50,25 +50,38 @@ export const SocketProvider = ({ children }) => {
       return;
     }
 
-    // Already connected with same token
+    // Already have an active connected socket — nothing to do
     if (socketRef.current?.connected) return;
+
+    // If a socket exists but is disconnected, clean it up before creating a new one
+    if (socketRef.current) {
+      socketRef.current.disconnect();
+      socketRef.current = null;
+    }
+
+    // Cancelled flag prevents StrictMode double-invoke from registering two sockets
+    let cancelled = false;
 
     const newSocket = io(import.meta.env.VITE_SOCKET_URL || import.meta.env.VITE_API_URL?.replace('/api', ''), {
       auth: { token },
       transports: ['websocket', 'polling'],
-      reconnectionAttempts: 5,
-      reconnectionDelay: 2000,
+      reconnectionAttempts: 10,
+      reconnectionDelay: 1000,
+      reconnectionDelayMax: 5000,
+      timeout: 10000,
     });
 
     socketRef.current = newSocket;
-    setSocket(newSocket);
 
     newSocket.on('connect', () => {
+      if (cancelled) return;
       setConnected(true);
+      setSocket(newSocket);
       console.log('[Socket] Connected:', newSocket.id);
     });
 
     newSocket.on('disconnect', (reason) => {
+      if (cancelled) return;
       setConnected(false);
       console.log('[Socket] Disconnected:', reason);
     });
@@ -79,6 +92,7 @@ export const SocketProvider = ({ children }) => {
 
     // ── Attendance events ──────────────────────────────────────────────────
     newSocket.on('attendance:punch-in', (data) => {
+      if (cancelled) return;
       addNotification({
         type: 'info',
         title: 'Punch In',
@@ -89,6 +103,7 @@ export const SocketProvider = ({ children }) => {
     });
 
     newSocket.on('attendance:punch-out', (data) => {
+      if (cancelled) return;
       addNotification({
         type: 'info',
         title: 'Punch Out',
@@ -104,6 +119,7 @@ export const SocketProvider = ({ children }) => {
     });
 
     newSocket.on('attendance:validated', (data) => {
+      if (cancelled) return;
       const isValid = data.validationStatus === 'valid';
       addNotification({
         type: isValid ? 'success' : 'warning',
@@ -116,6 +132,7 @@ export const SocketProvider = ({ children }) => {
 
     // ── Overtime events ────────────────────────────────────────────────────
     newSocket.on('overtime:new-request', (data) => {
+      if (cancelled) return;
       addNotification({
         type: 'warning',
         title: 'New OT Request',
@@ -126,6 +143,7 @@ export const SocketProvider = ({ children }) => {
     });
 
     newSocket.on('overtime:approved', (data) => {
+      if (cancelled) return;
       addNotification({
         type: 'success',
         title: 'Overtime Approved ✅',
@@ -136,6 +154,7 @@ export const SocketProvider = ({ children }) => {
     });
 
     newSocket.on('overtime:rejected', (data) => {
+      if (cancelled) return;
       addNotification({
         type: 'error',
         title: 'Overtime Rejected ❌',
@@ -146,9 +165,11 @@ export const SocketProvider = ({ children }) => {
     });
 
     return () => {
+      cancelled = true;
       newSocket.disconnect();
       socketRef.current = null;
       setSocket(null);
+      setConnected(false);
     };
   }, [isAuthenticated, token, addNotification]);
 

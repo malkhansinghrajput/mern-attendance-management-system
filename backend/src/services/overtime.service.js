@@ -53,7 +53,7 @@ const requestOvertime = async (employeeId, { attendanceId, requestedHours, reaso
   await attendance.save();
 
   logger.info(`OT request: employeeId=${employeeId}, attendanceId=${attendanceId}, hours=${requestedHours}`);
-  return otRequest.populate('employeeId', 'name email');
+  return await otRequest.populate('employeeId', 'name email');
 };
 
 /**
@@ -137,7 +137,7 @@ const approveOvertime = async (otId, reviewerId, reviewerRole, { reviewRemarks }
   await otRequest.save();
 
   logger.info(`OT approved: otId=${otId}, by=${reviewerId}`);
-  return otRequest.populate([
+  return await otRequest.populate([
     { path: 'employeeId', select: 'name email' },
     { path: 'reviewedBy', select: 'name role' },
   ]);
@@ -180,7 +180,7 @@ const rejectOvertime = async (otId, reviewerId, reviewerRole, { reviewRemarks })
   await otRequest.save();
 
   logger.info(`OT rejected: otId=${otId}, by=${reviewerId}`);
-  return otRequest.populate([
+  return await otRequest.populate([
     { path: 'employeeId', select: 'name email' },
     { path: 'reviewedBy', select: 'name role' },
   ]);

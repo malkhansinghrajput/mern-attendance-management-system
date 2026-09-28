@@ -120,7 +120,7 @@ const punchIn = async (userId, { selfieUrl, location }) => {
   });
 
   logger.info(`Punch in: userId=${userId}, shiftDate=${shiftDate}, distance=${distanceFromOffice}m`);
-  return attendance.populate('userId', 'name email role');
+  return await attendance.populate('userId', 'name email role');
 };
 
 /**
@@ -175,7 +175,7 @@ const punchOut = async (userId, { selfieUrl, location }) => {
     `Punch out: userId=${userId}, shiftDate=${attendance.shiftDate || attendance.date}, workedMinutes=${durations.workedMinutes}, regularMinutes=${durations.regularMinutes}, overtimeMinutes=${durations.overtimeMinutes}, status=${status}`
   );
 
-  return attendance.populate('userId', 'name email role');
+  return await attendance.populate('userId', 'name email role');
 };
 
 /**
@@ -336,7 +336,7 @@ const validateAttendance = async (attendanceId, validatorId, validatorRole, { va
   await attendance.save();
   logger.info(`Validation: attendanceId=${attendanceId}, status=${validationStatus}, by=${validatorId}`);
 
-  return attendance.populate([
+  return await attendance.populate([
     { path: 'userId', select: 'name email role' },
     { path: 'validatedBy', select: 'name role' },
   ]);
