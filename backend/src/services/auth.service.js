@@ -57,14 +57,18 @@ const signup = async ({ name, email, password, managerId, managerCode: rawManage
     newManagerCode = await generateManagerCode(name);
   }
 
-  const user = await User.create({
+  const userData = {
     name,
     email,
     passwordHash,
     role,
     managerId: resolvedManagerId,
-    managerCode: newManagerCode,
-  });
+  };
+  if (newManagerCode) {
+    userData.managerCode = newManagerCode;
+  }
+
+  const user = await User.create(userData);
 
   const token = signToken(user._id.toString(), user.role);
   logger.info(`User signup: email=${email}, role=${user.role}${newManagerCode ? `, managerCode=${newManagerCode}` : ''}`);

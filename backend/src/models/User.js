@@ -49,11 +49,8 @@ const userSchema = new mongoose.Schema(
     },
     managerCode: {
       type: String,
-      unique: true,
-      sparse: true, // only managers have this; null values are excluded from unique index
       uppercase: true,
       trim: true,
-      default: null,
     },
     isActive: {
       type: Boolean,
@@ -77,6 +74,14 @@ userSchema.index({ managerId: 1 });
 userSchema.index({ role: 1 });
 // Index for isActive filtering
 userSchema.index({ isActive: 1 });
+// Unique index on managerCode ONLY for string values (managers only; null/undefined ignored)
+userSchema.index(
+  { managerCode: 1 },
+  {
+    unique: true,
+    partialFilterExpression: { managerCode: { $type: 'string' } },
+  }
+);
 
 const User = mongoose.model('User', userSchema);
 
